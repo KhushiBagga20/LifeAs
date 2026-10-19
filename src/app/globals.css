@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/* Design tokens (DESIGN.md §6.1). Components use these through Tailwind utilities
+   (bg-paper, text-ink, border-line, …); Tailwind's default palette is switched off. */
+
+:root {
+  --paper: #f6f1e7;
+  --paper-2: #efe8da;
+  --paper-3: #e6ddcb;
+  --ink: #1d1b18;
+  --ink-soft: #5b554c;
+  --line: rgba(29, 27, 24, 0.12);
+  --line-strong: rgba(29, 27, 24, 0.24);
+  --accent: #bc4c35;
+  --accent-ink: #a3402b;
+  --on-accent: #fff8f0;
+  --energised: #4f6f57;
+  --pressure: #8a6212;
+  --info: #3f5c7d;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #15130f;
+    --paper-2: #1d1a15;
+    --paper-3: #26221c;
+    --ink: #f3ede2;
+    --ink-soft: #b9b0a2;
+    --line: rgba(243, 237, 226, 0.12);
+    --line-strong: rgba(243, 237, 226, 0.24);
+    --accent: #e07a5f;
+    --accent-ink: #ec937b;
+    --on-accent: #1d1b18;
+    --energised: #8fb398;
+    --pressure: #e2b45a;
+    --info: #8eaed2;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #15130f;
+  --paper-2: #1d1a15;
+  --paper-3: #26221c;
+  --ink: #f3ede2;
+  --ink-soft: #b9b0a2;
+  --line: rgba(243, 237, 226, 0.12);
+  --line-strong: rgba(243, 237, 226, 0.24);
+  --accent: #e07a5f;
+  --accent-ink: #ec937b;
+  --on-accent: #1d1b18;
+  --energised: #8fb398;
+  --pressure: #e2b45a;
+  --info: #8eaed2;
+  color-scheme: dark;
+}
+
+@theme {
+  --color-*: initial;
+}
+
+@theme inline {
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-paper-3: var(--paper-3);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+  --color-energised: var(--energised);
+  --color-pressure: var(--pressure);
+  --color-info: var(--info);
+
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
