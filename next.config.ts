@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
     "/careers": ["./src/data/onet/index.json", "./src/data/onet/meta.json"],
     "/careers/*": ["./src/data/onet/**/*.json"],
     "/api/careers/*": ["./src/data/onet/index.json"],
+    // Migrations run on first database use.
+    "/**": ["./src/db/migrations/**/*"],
   },
   turbopack: {
     rules: {

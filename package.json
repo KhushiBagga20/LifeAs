@@ -15,9 +15,11 @@
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
     "onet:import": "node --max-old-space-size=4096 --import tsx scripts/import-onet.ts",
-    "onet:search": "node --import tsx scripts/try-search.ts"
+    "onet:search": "node --import tsx scripts/try-search.ts",
+    "llm:smoke": "node --env-file-if-exists=.env.local --import tsx scripts/llm-smoke.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@electric-sql/pglite": "^0.5.10",
     "drizzle-orm": "^0.45.4",
     "lucide-react": "^1.59.0",

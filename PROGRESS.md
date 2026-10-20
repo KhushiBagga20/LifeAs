@@ -9,7 +9,7 @@ M10 is the stretch milestone. If you're behind, skip it and do M11.
 |---|---|---|---|
 | M0 | 🟡 **Scaffold & deploy** (all but the deploy): Next.js + TS strict, Tailwind tokens, fonts, lint, Vitest, Playwright, Postgres + Drizzle, env config, Vercel deploy | 1 | A live URL shows the empty app shell in the design system; tests run in CI |
 | M1 | ✅ **Career data:** O*NET import script, search (titles + alternate titles), CareerProfile builder, credit on About page | 2–3 | "nurse", "ux designer" and "electrician" find the right occupations; a profile page shows the six kinds-of-work bars |
-| M2 | **AI layer:** provider interface, adapter(s), FakeLLM, cache, cost tracking, per-run + daily caps, retries. **Choose the provider and fast-tier model** by running 3 careers on each candidate | 3–4 | A real call works; cost is recorded per call; caps refuse over-limit calls; the choice and its reasons are written under Decisions |
+| M2 | 🟡 **AI layer** (all but the live check, which needs an API key): provider interface, adapter(s), FakeLLM, cache, cost tracking, per-run + daily caps, retries. **Choose the provider and fast-tier model** by running 3 careers on each candidate | 3–4 | A real call works; cost is recorded per call; caps refuse over-limit calls; the choice and its reasons are written under Decisions |
 | M3 | **Career compiler:** Workplace generation (cast, **locations with kinds and sizes, home and work places, routines**), coverage / routine / diversity checks, repair pass; compile the 6 featured careers | 4–6 | All 6 pass the checks; reading them, the weeks feel like the real job, boring parts included |
 | M4 | **Moment engine:** open / exchange / resolve, task review, director (*Meanwhile* events with who goes where), **routines and `move` events**, meters and trust with clamps, event log, snapshots, determinism + replay tests | 6–8 | A full Quick shift plays end to end through the API with both FakeLLM and the real model, and the event log says where everyone is at every step |
 | M5 | **Design system + picker + expectations + briefing** | 8–9 | Screens look finished on phone and laptop; screenshots reviewed |
@@ -59,6 +59,19 @@ _(what · why · date)_
   city: the job stays the focus. Conversations stay in a scene panel so they're easy to read.
   The plan grows from ~3 to ~4 weeks rather than cutting a feature. M3 and M4 now also produce
   locations, routines and `move` events for the map. · 2026-10-20
+- **AI provider: Claude, through the official SDK, swappable.** Callers only see
+  `getLLM().generate({ tier, purpose, system, messages, schema })`; providers implement one
+  interface. Both tiers default to `claude-opus-5-5` (the documented default); set
+  `LLM_FAST_MODEL=claude-haiku-5-5` to compare the cheaper fast tier once a key exists. Opus
+  requests opt into server-side fallback (`fallbacks: "default"`) so a policy refusal is retried
+  on Anthropic's recommended fallback model; refusals that still fail reach the caller as a typed
+  error. Effort: low for the fast tier, medium for smart; thinking stays adaptive. · 2026-10-20
+- **One table is both the AI cache and the cost log** (`llm_calls`). Repeated identical requests
+  cost nothing; failed attempts are logged for cost but never served. Caps: $2 per run and $10
+  per UTC day by default, checked against a worst-case estimate before each call. · 2026-10-20
+- **No key yet → FakeLLM everywhere.** Without `ANTHROPIC_API_KEY` the app runs on FakeLLM
+  (deterministic, schema-valid, free), so building can continue; the live check
+  (`npm run llm:smoke`) and the Opus-vs-Haiku comparison wait for a key. · 2026-10-20
 - **Next.js keeps the previous page mounted (hidden)** with Cache Components. Two forms can be
   in the document at once, so the search label wraps its input instead of using an id, and
   tests only count visible text. · 2026-10-20
@@ -73,3 +86,8 @@ _(date · what was done · tests · cost spent)_
   career pages (kinds-of-work chart with table view, top tasks, working conditions, preparation,
   related careers), search results, featured careers, About page with the O*NET credit, search
   API, not-found page · 62 unit + 16 e2e passing, lint and build clean · $0
+- 2026-10-20 · Repo pushed to github.com/KhushiBagga20/LifeAs (`main`), on top of its initial commit
+- 2026-10-20 · M2: AI layer (provider interface, Claude adapter with structured output, caching,
+  effort and fallback; FakeLLM; cache + cost log in Postgres; run and daily caps; validation retry;
+  truncation retry; concurrency limit; smoke script) · 81 unit passing · $0
+- Left in M2: live check and model comparison (needs `ANTHROPIC_API_KEY` in `.env.local`)

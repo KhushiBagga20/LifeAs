@@ -12,14 +12,22 @@ A career simulator: play a sped-up work week in any job, then see what the job i
   `text-ink`, `text-ink-soft`, `border-line`, `text-accent-ink`, …), Drizzle on Postgres.
 - **Database:** with `DATABASE_URL` set, Postgres. Without it, embedded PGlite in `.data/pglite`.
   Tests use `createDatabase({ url: "", pgliteDir: "memory://" })`.
-- **AI calls:** only through the `src/llm` layer once it exists (M2). Tests and most UI work use
-  FakeLLM, never a real provider.
+- **AI calls:** only through `getLLM().generate({ tier, purpose, system, messages, schema })` in
+  `src/llm`. Without `ANTHROPIC_API_KEY` it uses FakeLLM; tests always use FakeLLM or a scripted
+  provider, never a real one. Register realistic fakes per purpose with `FakeProvider.register`.
+
+## Git
+- Work on a branch per milestone (e.g. `m2/ai-layer`). When the milestone's tests pass, fast-forward
+  `main`, commit, and push to `origin` (github.com/KhushiBagga20/LifeAs) without asking.
+- Commits are the owner's only: no `Co-Authored-By` trailer or other Claude attribution.
 
 ## Commands
 - `npm run dev` starts the app at http://localhost:3000 (preview config: `.claude/launch.json`, name `web`)
 - `npm run check` runs lint, the type check and the unit tests
 - `npm run e2e` runs the Playwright tests at laptop and phone sizes (screenshots go to `qa/screens/`)
 - `npm run build` creates a production build
+- `npm run llm:smoke` makes one real AI call per tier (needs `ANTHROPIC_API_KEY` in `.env.local`)
+- `npm run db:generate` creates a migration after changing `src/db/schema.ts`
 
 ## Rules
 - Never mark a milestone done with failing tests, and never weaken a test to make it pass.
