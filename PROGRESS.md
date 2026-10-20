@@ -1,8 +1,8 @@
 # LifeAs — progress
 
-Plan: about 3 weeks of focused work (18 working days). Started: 2026-10-19
+Plan: about 4 weeks of focused work (22 working days). Started: 2026-10-19
 Rule: do the milestones in order; each one ends with tests passing and the "done when" true.
-M9 is the stretch milestone. If you're behind, skip it and do M10.
+M10 is the stretch milestone. If you're behind, skip it and do M11.
 
 ## Milestones
 | # | Milestone | Days | Done when |
@@ -10,14 +10,15 @@ M9 is the stretch milestone. If you're behind, skip it and do M10.
 | M0 | 🟡 **Scaffold & deploy** (all but the deploy): Next.js + TS strict, Tailwind tokens, fonts, lint, Vitest, Playwright, Postgres + Drizzle, env config, Vercel deploy | 1 | A live URL shows the empty app shell in the design system; tests run in CI |
 | M1 | ✅ **Career data:** O*NET import script, search (titles + alternate titles), CareerProfile builder, credit on About page | 2–3 | "nurse", "ux designer" and "electrician" find the right occupations; a profile page shows the six kinds-of-work bars |
 | M2 | **AI layer:** provider interface, adapter(s), FakeLLM, cache, cost tracking, per-run + daily caps, retries. **Choose the provider and fast-tier model** by running 3 careers on each candidate | 3–4 | A real call works; cost is recorded per call; caps refuse over-limit calls; the choice and its reasons are written under Decisions |
-| M3 | **Career compiler:** Workplace generation, coverage / routine / diversity checks, repair pass; compile the 6 featured careers | 4–6 | All 6 pass the checks; reading them, the weeks feel like the real job, boring parts included |
-| M4 | **Moment engine:** open / exchange / resolve, task review, director (*Meanwhile*), meters and trust with clamps, event log, snapshots, determinism + replay tests | 6–8 | A full Quick shift plays end to end through the API with both FakeLLM and the real model |
+| M3 | **Career compiler:** Workplace generation (cast, **locations with kinds and sizes, home and work places, routines**), coverage / routine / diversity checks, repair pass; compile the 6 featured careers | 4–6 | All 6 pass the checks; reading them, the weeks feel like the real job, boring parts included |
+| M4 | **Moment engine:** open / exchange / resolve, task review, director (*Meanwhile* events with who goes where), **routines and `move` events**, meters and trust with clamps, event log, snapshots, determinism + replay tests | 6–8 | A full Quick shift plays end to end through the API with both FakeLLM and the real model, and the event log says where everyone is at every step |
 | M5 | **Design system + picker + expectations + briefing** | 8–9 | Screens look finished on phone and laptop; screenshots reviewed |
-| M6 | **Scene player:** backdrops, portraits with expressions, streamed lines, replies + free text, task views, pulse, *Meanwhile*, HUD | 9–12 | A Quick shift is fun to play on a phone; first line appears in ~2 s |
-| M7 | **Fit report:** fit model, narrative with moment citations, job-makeup chart, expected vs real, related careers, share card | 12–13 | The report numbers match a hand calculation on a test run; every claim links to a moment or a source |
-| M8 | **Ask a senior** chat | 14 | Answers stay in character and separate facts (cited) from opinion |
-| M9 | **Replay + compare** *(stretch)* | 15–16 | Replay from any moment branches correctly; two reports show side by side |
-| M10 | **Launch hardening:** visitor limits, daily spend cap, "watch a recorded week" fallback, all loading/error/limit states, accessibility, performance, e2e green, README, **portfolio case study** | 16–18 | A stranger can open the link on a phone, play a week and read a report; the case study explains the design decisions |
+| M6 | **Scene panel:** backdrops, portraits with expressions, streamed lines, replies + free text, task views, pulse, HUD | 9–12 | A Quick shift is fun to play on a phone through the panel alone; first line appears in ~2 s |
+| M7 | **2D world:** PixiJS stage, map generator (cut-away workplace + district with home, café, street), figures from the avatar generator, pathfinding, routines on screen, speech bubbles, day/night, camera (follow, zoom into moments), event list as text | 12–16 | Every featured career gets its own believable map; figures walk to meetings, lunch and home as the clock runs; moments zoom in and open the panel; ≥ 55 fps median on laptop and phone; reduced motion works |
+| M8 | **Fit report:** fit model, narrative with moment citations, job-makeup chart, expected vs real, related careers, share card | 16–17 | The report numbers match a hand calculation on a test run; every claim links to a moment or a source |
+| M9 | **Ask a senior** chat | 18 | Answers stay in character and separate facts (cited) from opinion |
+| M10 | **Replay + compare** *(stretch)* | 19–20 | Replay from any moment branches correctly; two reports show side by side |
+| M11 | **Launch hardening:** visitor limits, daily spend cap, "watch a recorded week" fallback, all loading/error/limit states, accessibility, performance, e2e green, README, **portfolio case study** | 20–22 | A stranger can open the link on a phone, play a week and read a report; the case study explains the design decisions |
 
 Status key: 🟡 in progress · ✅ done
 
@@ -54,6 +55,10 @@ _(what · why · date)_
   visit and are then cached. · 2026-10-20
 - **Browser tests run against a production build** (`next build && next start`), because
   Next.js 16 won't run a second dev server in the same folder. · 2026-10-20
+- **2D world added (M7):** workplace plus a small district (home, café, street), not a whole
+  city: the job stays the focus. Conversations stay in a scene panel so they're easy to read.
+  The plan grows from ~3 to ~4 weeks rather than cutting a feature. M3 and M4 now also produce
+  locations, routines and `move` events for the map. · 2026-10-20
 - **Next.js keeps the previous page mounted (hidden)** with Cache Components. Two forms can be
   in the document at once, so the search label wraps its input instead of using an id, and
   tests only count visible text. · 2026-10-20

@@ -4,7 +4,7 @@
 week, with a boss, coworkers and clients who remember what you did. At the end, see what the
 job is really made of and how it suited you.
 
-Status: early build (milestones M0–M1 of 10). See [DESIGN.md](DESIGN.md) for the design and
+Status: early build (milestones M0–M1 of 11). See [DESIGN.md](DESIGN.md) for the design and
 [PROGRESS.md](PROGRESS.md) for where things stand.
 
 ## Run it

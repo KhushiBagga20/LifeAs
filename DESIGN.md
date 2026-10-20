@@ -34,8 +34,10 @@ culture, currency). The job content comes from O*NET, which is US data (§2), an
    on?" Pick 3 from the job's real activities. The report shows expected vs real.
 3. **Briefing.** Your role, the workplace, the people you'll work with (portrait + one line
    each), the week ahead, what doing well means here, and a "what this job is made of" bar.
-4. **Play the week.** A sequence of moments (§1.4). Between moments, a short *Meanwhile…*
-   shows what the others did off-screen.
+4. **Play the week.** You watch it unfold in a 2D view of your workplace and its neighbourhood
+   (§1.5, §6.2) while a sped-up clock runs. When a moment starts (§1.4), the camera moves in
+   and the conversation opens. Between moments the others go about their day, and *Meanwhile…*
+   events happen where you can see them.
 5. **Pulse check** after each moment: one tap, *energised / fine / drained*.
 6. **Fit report** at the end (§1.6).
 7. **Ask a senior** at any time: chat with an experienced character from this career.
@@ -67,6 +69,10 @@ what let the report compare what you felt with what the job is made of.
   appears as *Meanwhile…* lines and can reshape the next moments (within limits, §4.4).
 - **Job meters:** 2–4 meters specific to the job ("Launch readiness", "Ward calm", "Site
   safety", "Client happiness") plus your **energy**. They only move because of events.
+- **A place you can watch.** The workplace is a cut-away building with the rooms this job needs,
+  inside a small district with your home, a café and the street. People arrive, work at their
+  desks or stations, walk to meetings, take lunch and go home. Movement always means something:
+  it comes from a routine (§4.5) or an engine event, never random wandering.
 
 ### 1.6 The fit report
 - **Your week** in one paragraph, linking to the key moments.
@@ -136,6 +142,7 @@ Wildlife Biologists").
 │                    replay · event log · snapshots · seeded RNG                                │
 │  llm/              provider interface · Claude adapter (+ others if chosen) · FakeLLM ·       │
 │                    cache · cost tracking · caps                                               │
+│  world/            2D map (PixiJS) · map generator · avatar sprites · paths · camera · bubbles │
 │  data/onet/        import script → generated JSON / tables                                    │
 └───────────────────────────────────────────▲───────────────────────────────────────────────────┘
                                             │
@@ -151,6 +158,8 @@ Wildlife Biologists").
   `@anthropic-ai/sdk` with structured outputs. Every response is validated with zod.
 - **UI:** React, Tailwind with our own design tokens (no default palette), Framer Motion,
   lucide icons, self-hosted fonts. SVG backdrops and portraits.
+- **2D world:** PixiJS v8 (WebGL canvas) for the map and the figures, with React for everything
+  around it (HUD, conversation panel, event list). Loaded only on the play screen.
 - **Tests:** Vitest (unit) and Playwright (end-to-end).
 
 ---
@@ -164,18 +173,22 @@ CareerProfile   onet_code, title, description, tasks[{id, text, importance, freq
                 job_zone, related[codes]                                   # from O*NET only
 Workplace       id, onet_code, options{level, workplace, location}, setting{name, place,
                 culture notes, currency}, you{title, responsibilities},
-                cast[Character], locations[{id, name, kind}], meters[{id, name, start, meaning}],
-                week[MomentPlan], seed
+                cast[Character], locations[{id, name, kind, size, area(workplace|district)}],
+                map{rooms[{location_id, rect, doors}], district[{location_id, rect}], paths},
+                meters[{id, name, start, meaning}], week[MomentPlan], seed
+                                         # map is generated in code from locations + seed
 Character       id, name, role, age, gender, avatar_seed, backstory, personality{big5},
-                wants, agenda, voice{formality, slang, language_mix, verbosity, quirks}
+                wants, agenda, voice{formality, slang, language_mix, verbosity, quirks},
+                home_location, work_location, routine{arrive, lunch, leave, habits[]}
 MomentPlan      n, day, time, location_id, kind(conversation|task|routine|pressure),
                 cast_ids[], onet_task_ids[], work_kinds{R..C weights}, setup, stakes,
                 task_spec?{type, prompt, rubric[]}
 Run             id, workplace_id, parent_run_id?, branch_moment?, seed, status, moment_n,
                 meters{}, energy, trust{char_id: -1..1}, expectations[], cost, created_at
-Event           run_id, seq, moment_n, kind(line|reply|task_answer|review|resolve|meanwhile|
-                pulse|meter|system), actor_id?, content, data{}, cause_ids[]   # append-only
-Snapshot        run_id, moment_n, blob (full run state + character memories + rng state)
+Event           run_id, seq, moment_n, sim_time, kind(line|reply|task_answer|review|resolve|
+                meanwhile|move|pulse|meter|system), actor_id?, content, data{}, cause_ids[]
+                                                                             # append-only
+Snapshot        run_id, moment_n, blob (full run state + memories + positions + rng state)
 LLMCall         hash, provider, model, tier, tokens{in, cached, out}, cost, latency_ms,
                 response, created_at                                        # also the cache
 ```
@@ -212,12 +225,22 @@ cost nothing for visitors.
   sentence can't swing the week.
 
 ### 4.4 Director (between moments, fast tier)
-Input: agendas, trust, meters and the last resolution. Output: 0–3 off-screen events (who did
-what with whom), shown as *Meanwhile…* lines, plus optional edits to the next 1–2 moments (their
-setup, stakes or cast). The director **cannot delete a moment or change its kind or task tags**,
-so the week stays faithful to the job's real makeup.
+Input: agendas, trust, meters and the last resolution. Output: 0–3 off-screen events, each
+naming who goes where, who they talk to and the line they say. On the map the character walks
+there and the line appears as a speech bubble; the same events are listed as *Meanwhile…* lines.
+The director may also edit the next 1–2 moments (their setup, stakes or cast). It **cannot
+delete a moment or change its kind or task tags**, so the week stays faithful to the job's real
+makeup.
 
-### 4.5 Event log, snapshots, replay
+### 4.5 Routines (code, no AI)
+Everyone follows a seeded routine built from the job's work context and the workplace:
+arrive (with a little jitter), work at their desk or station, lunch in the kitchen or café,
+leave, go home. Unnamed background figures (about 10) follow routines only. Director events
+and moments override routines: before a moment, everyone in it walks to its room, you
+included. Routines emit `move` events like everything else, so replays and snapshots
+include where everyone was. No AI calls, so a busy-looking map costs nothing.
+
+### 4.6 Event log, snapshots, replay
 - **Event log:** every event is appended to one log, with `cause_ids` linking it to the events
   behind it. The UI and the report read from it.
 - **Snapshots:** taken before every moment.
@@ -226,7 +249,7 @@ so the week stays faithful to the job's real makeup.
   `hash(provider, model, messages, schema, seed)`. The same seed with the same choices gives the
   same week, and replaying a recorded run costs nothing.
 
-### 4.6 Fit model (code, not AI)
+### 4.7 Fit model (code, not AI)
 - Each moment has kind-of-work weights (from its tasks and activities).
 - Pulse values: energised = +1, fine = 0, drained = −1.
 - **Affinity per kind** = the weighted mean of the pulses, reported with the number of moments
@@ -236,11 +259,11 @@ so the week stays faithful to the job's real makeup.
 - The AI writes the narrative from these numbers and cites moments, but it cannot change the
   numbers.
 
-### 4.7 Ask a senior (smart tier, streamed)
+### 4.8 Ask a senior (smart tier, streamed)
 Persona + CareerProfile + this run's events. Answers in character and keeps two things apart:
 **facts** (from O*NET, cited) and **personal opinion** (labelled).
 
-### 4.8 Models, cost and limits
+### 4.9 Models, cost and limits
 **Two tiers:** *smart* (compiler, task review, report, ask a senior) and *fast* (character
 lines, suggested replies, resolve, director). The provider is decided in M2 by running the same
 3 careers on each candidate and comparing voice quality, speed and cost.
@@ -267,7 +290,7 @@ before prompt caching, and excludes thinking tokens. Measure it for real in M2:
 - **Prompt caching:** stable content first (rules → career profile → cast), the volatile scene
   context last.
 
-### 4.9 Reliability
+### 4.10 Reliability
 - Every response is validated against its zod schema; on failure, one retry with the
   validation error.
 - If the retry also fails, a safe fallback (a neutral in-character line, or "no change"); the
@@ -313,14 +336,35 @@ a dashboard. Everything below is a proposal to react to.
 - **Motion:** lines appear one by one after a short typing beat, portraits change expression with
   emotion, and meters ease to new values. Respects reduced motion.
 
-### 6.2 Scene screen (the hero)
-- **Top band:** an illustrated backdrop for the location, tinted by time of day, with day and
-  time.
-- **Middle:** the characters present (portrait, name, role; trust shown on hover/tap), with the
-  dialogue column beside or below them.
-- **Bottom:** suggested replies plus a text box; a HUD with Mon–Fri progress, energy, job meters
-  and the *Ask a senior* button.
-- **Must work on a phone as well as a laptop,** because portfolio links get opened on phones.
+### 6.2 The play screen: world view and scenes (the hero)
+**World view** (most of the time):
+- **Map:** a 3/4 top-down view drawn in the same warm illustrated style as everything else.
+  The building is generated per workplace from its locations: a layout generator packs the
+  rooms the job needs (desks, the boss's office, a meeting room, a kitchen, plus job-specific
+  rooms such as a ward and nurses' station, or a workshop bay) into a cut-away footprint. The
+  district around it adds your home, a café and the street. The same seed gives the same map.
+- **Figures:** small versions of the portrait characters (same avatar generator). They walk
+  along paths with a slight bob and idle motion (typing, phone, coffee). You are marked with
+  an accent ring.
+- **Speech bubbles:** the real lines from the event log, shortened with a way to read the full
+  line, with typing dots before. Mood shows as a small change of expression.
+- **Time:** day/night tint follows the clock; lights come on in the evening; people go home.
+- **Camera:** pan and zoom, follow you, and glide into the room when a moment starts.
+- **HUD:** day and time, play/pause, speed (1×, 2×, 4×), skip to the next moment, energy and
+  job meters, *Ask a senior*.
+- **Performance:** up to ~12 named and ~10 background figures at 60 fps on a mid-range phone;
+  one texture atlas; rendering pauses when the tab is hidden.
+- **Accessible as text:** everything that happens on the map is also in an event list that
+  keyboards and screen readers can reach. With reduced motion there are no camera glides and
+  figures fade between places instead of walking.
+
+**Scene panel** (during a moment; a bottom sheet on phones, a side panel on laptops):
+- **Top:** the location's illustrated backdrop, tinted by time of day, with day and time.
+- **Middle:** the characters present (portrait, name, role; trust on hover or tap) and the
+  dialogue.
+- **Bottom:** suggested replies plus a text box.
+
+Both must work on a phone as well as a laptop, because portfolio links get opened on phones.
 
 ### 6.3 Art
 - **Backdrops:** about 12 location kinds (open office, meeting room, hospital ward, clinic,
@@ -328,10 +372,12 @@ a dashboard. Everything below is a proposal to react to.
   home office), drawn as layered SVG in one style and tinted per scene.
 - **Portraits:** a deterministic SVG avatar generator (our own, or an open-source one whose art
   licence allows this use) with 4–5 expressions and role-appropriate clothing.
+- **Map pieces:** floors, walls, furniture and district buildings drawn as SVG in the same style,
+  rasterised into one texture atlas for the canvas.
 - **No AI image generation in v1** (cost and inconsistency).
 
 ### 6.4 Screens
-Home / career picker · expectation picker · briefing · scene player · task views (write, rank,
+Home / career picker · expectation picker · briefing · play screen (world view + scene panel) · task views (write, rank,
 spot-the-error, pick-and-justify) · *Meanwhile* interlude · fit report · senior chat drawer ·
 compare · about & sources.
 
@@ -355,6 +401,8 @@ error-with-retry and limit-reached state (which offers a recorded week). There a
 7. No placeholder content and no default-template look.
 8. The first line of a scene appears within ~2 s (streamed).
 9. Costs are capped, and the demo never shows a broken page.
+10. Movement on the map always means something (a routine or an event), and everything shown
+    on the map is also available as text.
 
 ---
 
@@ -367,12 +415,16 @@ error-with-retry and limit-reached state (which offers a recorded week). There a
   - schema validation
   - cost calculation
   - cache keys
+  - map generator: same seed gives the same map; every room is reachable
+  - pathfinding and routines
 - **FakeLLM:** deterministic, schema-valid responses with seeded variety. All automated tests
   and most UI work use it.
 - **Determinism:** the same seed, choices and FakeLLM give an identical event log.
 - **Replay:** events before the branch point are identical across the two runs.
 - **End-to-end (Playwright, FakeLLM):** pick a career → briefing → play a Quick shift (with a
   task and pulses) → report → replay → compare, at phone and laptop sizes, with screenshots.
+  The world renders and figures move between rooms as the clock runs.
+- **Performance:** the world view holds a median of at least 55 fps with every figure on screen.
 - **Quality eval (real model, small, run whenever prompts change):** 10 varied careers, checked
   for schema validity, coverage, cast diversity, and a 1–5 human rating of realism and
   distinctness of voice.
@@ -388,6 +440,7 @@ LifeAs/
     components/   scene, portraits, backdrops, report, charts, controls
     engine/       compiler.ts moment.ts review.ts director.ts fit.ts replay.ts events.ts rng.ts
     llm/          index.ts (interface) claude.ts fake.ts cache.ts cost.ts limits.ts
+    world/        stage, map generator, avatar sprites, pathfinding, routines, camera, bubbles
     db/           index.ts schema.ts migrations/
     lib/          shared helpers (kinds of work, formatting)
   data/onet/      import script + generated/
@@ -407,3 +460,5 @@ LifeAs/
 | Visual direction | Graphic novel, warm paper (§6.1) | M5 |
 | Featured careers | **Decided in M1:** Electrician (Hands-on), Data scientist (Thinking), Graphic designer (Creating), Registered nurse (Helping), Lawyer (Leading), Accountant (Organising); each is its kind's first interest high point in O*NET data | Done |
 | Local pay / career-path data | Only with a real source per country; v2 | Later |
+| 2D world | **Decided 2026-10-20:** workplace plus a small district (home, café, street), with the conversations in a scene panel | Done |
+| Timeline | **Decided 2026-10-20:** about 4 weeks, to fit the world without cutting features | Done |
