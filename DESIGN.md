@@ -171,18 +171,23 @@ Wildlife Biologists").
 CareerProfile   onet_code, title, description, tasks[{id, text, importance, frequency}],
                 activities[{id, name, importance}], interests{R,I,A,S,E,C}, work_context{…},
                 job_zone, related[codes]                                   # from O*NET only
-Workplace       id, onet_code, options{level, workplace, location}, setting{name, place,
-                culture notes, currency}, you{title, responsibilities},
-                cast[Character], locations[{id, name, kind, size, area(workplace|district)}],
-                map{rooms[{location_id, rect, doors}], district[{location_id, rect}], paths},
-                meters[{id, name, start, meaning}], week[MomentPlan], seed
-                                         # map is generated in code from locations + seed
-Character       id, name, role, age, gender, avatar_seed, backstory, personality{big5},
-                wants, agenda, voice{formality, slang, language_mix, verbosity, quirks},
-                home_location, work_location, routine{arrive, lunch, leave, habits[]}
-MomentPlan      n, day, time, location_id, kind(conversation|task|routine|pressure),
-                cast_ids[], onet_task_ids[], work_kinds{R..C weights}, setup, stakes,
-                task_spec?{type, prompt, rubric[]}
+Workplace       id, career_code, career_title, options{level, workplace, location, length},
+                seed, sources{onet_version, compiler_version}, setting{organisation, place,
+                description, culture_notes, currency}, you{title, responsibilities,
+                work_location_id}, cast[Character], locations[Location], meters[{id, name,
+                meaning, start 0..100}], week[MomentPlan]
+                # semantic only: the map layout (rects, paths) is generated from it in M7
+Location        id, name, kind, size, area(workplace|district), adjacent_ids[] (two-way)
+Character       id, name, role, relation(boss|senior|coworker|outsider), age, gender,
+                avatar_seed, backstory, goals[{id, description, involves[ids|"you"],
+                status(open|met|dropped)}], agenda (private), voice{formality, slang,
+                language_mix, verbosity, quirks}, personality{big5}, work_location_id?,
+                routine?{arrive, lunch, leave}          # outsiders: no work place or routine
+MomentPlan      id, n, day, time, kind(conversation|task|routine|pressure), work_kind(R..C),
+                onet_task_id, location_id, cast_ids[], title, setup, stakes,
+                task?{type(write|rank|spot|choose|estimate), prompt, items[], rubric[]}
+                # occupational structure (kind, work_kind, task) is fixed by the compiler;
+                # the engine may edit only setup, stakes and cast_ids of upcoming moments
 Run             id, workplace_id, parent_run_id?, branch_moment?, seed, status, moment_n,
                 meters{}, energy, trust{char_id: -1..1}, expectations[], cost, created_at
 Event           run_id, seq, moment_n, sim_time, kind(line|reply|task_answer|review|resolve|
@@ -193,23 +198,39 @@ LLMCall         hash, provider, model, tier, tokens{in, cached, out}, cost, late
                 response, created_at                                        # also the cache
 ```
 
-### 4.2 Career compiler (smart tier, structured output)
-Input: the CareerProfile, options and seed. Output: a Workplace.
-1. **Code first:** sample cast size, ages and genders, and the moment count per kind, from the
-   seed and the job's task weights.
-2. **Model drafts** the setting, cast personas and voices, locations, meters and the week plan,
-   using the sampled demographics as fixed inputs.
-3. **Code checks:**
-   - **Coverage:** the share of moments per kind of work is within ±15 points of the job's
-     O*NET profile.
-   - **Routine:** a Full week has at least one routine moment per day.
-   - **Valid references:** every moment references real task ids.
-   - **Distinct voices:** no two characters have the same voice settings or name.
-4. **One repair pass:** check failures go back to the model once. If they still fail, the run
-   uses the closest valid plan and logs it.
+### 4.2 Career compiler ("Career Architect", smart tier, structured output)
+Input: the CareerProfile, options and seed. Output: a validated Workplace, or a typed
+`CompileError` (reason: invalid, provider, budget, refusal or data) with actionable issues.
+The model proposes content; code decides what is accepted.
+1. **Prepare (code):** validate the profile; plan the slots (day, time, kind of moment and
+   kind of work per moment, by largest remainder on the O*NET shares); sample cast
+   demographics (independent of role); rank the tasks; write *data notes* for anything the
+   O*NET data doesn't cover (no working-conditions survey, unrated tasks, US-only data), which
+   the model is told not to fill in with invented facts.
+2. **Generate (model):** a JSON brief → a draft: setting, cast (goals that say who they
+   involve, private agenda, voice), 3–6 places from the allowed kinds with `nextTo` links, meters,
+   and one moment per slot that declares the kind of work it was written for.
+3. **Validate (code):** every problem names the part it's in (a cast id, a moment number,
+   locations, you or meters): unknown references, a moment written for a different kind of work
+   than planned, missing moments, tasks in the wrong place, repeated names or voices,
+   insiders without a goal involving someone, unreachable places.
+4. **Repair (model, once):** only the broken parts are sent back to be replaced, and only those
+   parts of the reply are applied.
+5. **Fallback (code):** safe fixes that don't invent content (bad references → safe defaults,
+   links to make places reachable, a nudged voice) and relabelling a moment's kind of work only
+   if the week still matches the job's mix. Anything else fails as `CompileError`.
+6. **Assemble and re-check:** build the Workplace (two-way links, the district joined to the
+   workplace through the street, goal and moment ids, routines) and run `validateWorkplace`, an
+   independent check of the finished workplace: schema, unique ids, every reference, the week's
+   required shape (WEEK_RULES), routine every day, coverage within tolerance, cast composition,
+   routines and goals.
 
-Cached by (onet_code, options, seed). Featured careers are compiled once and committed, so they
-cost nothing for visitors.
+At most two generate calls per compile (draft + repair), each with the AI layer's single schema
+retry. Stored workplaces are keyed by (career, options, seed, O*NET version, compiler version),
+so new data or a changed compiler never reuses a stale workplace. Featured careers are compiled
+once with the real model and committed, so they cost nothing for visitors. `npm run
+eval:compiler` compiles the featured six and a sample of unusual or data-limited careers
+(`--all`: every career, both lengths, FakeLLM only).
 
 ### 4.3 Running a moment
 - **Open** (fast tier): the scene's first lines from the characters present, each with
@@ -367,9 +388,10 @@ a dashboard. Everything below is a proposal to react to.
 Both must work on a phone as well as a laptop, because portfolio links get opened on phones.
 
 ### 6.3 Art
-- **Backdrops:** about 12 location kinds (open office, meeting room, hospital ward, clinic,
-  classroom, kitchen, studio, lab, construction site, shop floor, courtroom, outdoors/field,
-  home office), drawn as layered SVG in one style and tinted per scene.
+- **Backdrops:** one per location kind in `src/engine/types.ts` (offices, meeting rooms, wards,
+  classrooms, kitchens, studios, labs, sites, shop floors, courtrooms, plus vehicle, field and
+  depot for work outside buildings, and home, café and street), drawn as layered SVG in one
+  style and tinted per scene.
 - **Portraits:** a deterministic SVG avatar generator (our own, or an open-source one whose art
   licence allows this use) with 4–5 expressions and role-appropriate clothing.
 - **Map pieces:** floors, walls, furniture and district buildings drawn as SVG in the same style,

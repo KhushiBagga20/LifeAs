@@ -28,9 +28,15 @@ A career simulator: play a sped-up work week in any job, then see what the job i
 - `npm run build` creates a production build
 - `npm run llm:smoke` makes one real AI call per tier (needs `ANTHROPIC_API_KEY` in `.env.local`)
 - `npm run db:generate` creates a migration after changing `src/db/schema.ts`
+- `npm run eval:compiler` compiles the featured six + a diverse sample and reports problems
+  (`-- --all`: every career, both lengths, FakeLLM only)
+- `npm run compile:featured` compiles the featured careers with the real model into `src/data/workplaces/`
 
 ## Rules
 - Never mark a milestone done with failing tests, and never weaken a test to make it pass.
 - Every screen must work at phone width (390 px) and laptop width (1280 px) with no sideways scroll.
 - Text colours must pass 4.5:1 contrast; `tests/contrast.test.ts` checks the tokens.
 - No placeholder content. Copy and data are real, or the feature waits.
+- The engine owns the truth: AI output is a proposal that code validates before any state
+  changes. Workplaces must pass `validateWorkplace`; occupational structure comes from O*NET
+  and code, never from the model alone.

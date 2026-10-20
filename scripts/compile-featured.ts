@@ -20,16 +20,13 @@ async function main() {
   for (const career of featuredCareers) {
     const profile = (await readCareerProfile(career.code))!;
     const started = Date.now();
-    const { workplace, repaired, autoFixed } = await compileWorkplace(
-      { profile, meta, options: DEFAULT_OPTIONS, seed: FEATURED_SEED },
-      llm,
-    );
-    const id = workplaceId(career.code, DEFAULT_OPTIONS, FEATURED_SEED);
+    const { workplace, report } = await compileWorkplace({ profile, meta, options: DEFAULT_OPTIONS, seed: FEATURED_SEED }, llm);
+    const id = workplaceId(career.code, DEFAULT_OPTIONS, FEATURED_SEED, meta.version);
     writeFileSync(join(FEATURED_DIR, `${id}.json`), JSON.stringify(workplace, null, 1) + "\n");
     const gaps = coverageGaps(workplace.week, profile);
     console.log(
       `${career.name}: ${workplace.setting.organisation}, ${workplace.cast.length} people, ${workplace.week.length} moments` +
-        `${repaired ? ", repaired" : ""}${autoFixed.length ? `, auto-fixed ${autoFixed.length}` : ""}` +
+        `${report.repairIssues.length ? `, repaired ${report.repairIssues.length}` : ""}${report.fallbackFixes.length ? `, fallback fixes ${report.fallbackFixes.length}` : ""}` +
         `${gaps.length ? `, COVERAGE GAPS ${JSON.stringify(gaps)}` : ""} · ${((Date.now() - started) / 1000).toFixed(1)} s`,
     );
   }

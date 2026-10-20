@@ -18,6 +18,17 @@ const FULL_WEEK: Record<Day, string[]> = {
 };
 const QUICK_SHIFT = ["09:10", "10:50", "12:40", "14:30", "16:20"];
 
+/**
+ * The shape every week must have (DESIGN.md §1.4, §4.2). The planner builds weeks this way and
+ * validateWorkplace checks finished workplaces against the same rules.
+ */
+export const WEEK_RULES = {
+  quick: { total: QUICK_SHIFT.length, pressure: { min: 1, max: 1 }, tasks: 1 },
+  full: { total: Object.values(FULL_WEEK).flat().length, pressure: { min: 1, max: 2 }, tasks: 2 },
+} as const;
+// Also: every planned day has at least one routine moment, and the week never opens on a task
+// or a pressure moment.
+
 // Which kinds of work fit which kinds of moment best, most fitting first.
 const KIND_PREFERENCE: Record<MomentKind, KindCode[]> = {
   routine: ["C", "R", "I", "S", "E", "A"],
@@ -59,9 +70,10 @@ export function planSlots(profile: CareerProfile, options: WorkplaceOptions, rng
   const days = [...new Set(times.map((t) => t.day))];
   for (const day of days) kinds[rng.pick(dayIndexes(day))] = "routine";
 
+  const rules = WEEK_RULES[options.length];
   const highPressure = (contextMean(profile, "4.C.3.d.1") ?? 0) >= 4 || (contextMean(profile, "4.C.1.d.1") ?? 0) >= 3.5;
-  const pressureCount = options.length === "quick" ? 1 : highPressure ? 2 : 1;
-  const taskCount = options.length === "quick" ? 1 : 2;
+  const pressureCount = highPressure ? rules.pressure.max : rules.pressure.min;
+  const taskCount = rules.tasks;
   const free = () => kinds.flatMap((k, i) => (k === null && i > 0 ? [i] : []));
   for (let i = 0; i < pressureCount; i++) kinds[rng.pick(free())] = "pressure";
   for (let i = 0; i < taskCount; i++) kinds[rng.pick(free())] = "task";

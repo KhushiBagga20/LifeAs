@@ -1,13 +1,14 @@
 import type { Rng } from "@/lib/rng";
 import type { FakeProvider } from "@/llm/fake";
 import type { ProviderRequest } from "@/llm/types";
-import type { CompilerDraft } from "./compiler";
+import type { CompilerDraft, RepairPatch, repairRequest } from "./compiler";
 import type { CastSlot } from "./plan";
 import type { Voice } from "./types";
 
 // Realistic FakeLLM answers for the engine's AI calls, so the app is usable and testable without
-// a real model. They read the brief the engine sends (JSON) and answer in kind. Real content
-// comes from the real model; these only need to be plausible and valid.
+// a real model. They read the brief the engine sends (JSON) and answer in kind. They are
+// placeholders for development and tests only: room choices come from keywords in the job title,
+// and nothing here is presented as occupational fact. Real content comes from the real model.
 
 type Brief = {
   career: { title: string; tasks: { id: number; task: string }[] };
@@ -43,8 +44,16 @@ function region(location: string): keyof typeof NAMES {
 
 const CURRENCY: Record<keyof typeof NAMES, string> = { india: "INR", uk: "GBP", generic: "USD" };
 
-// Rooms and outsiders by the kind of job, matched on words in the O*NET title.
-const WORKPLACES: { match: RegExp; place: string; rooms: [string, string, string][]; outsider: string }[] = [
+type Room = [key: string, name: string, kind: CompilerDraft["locations"][number]["kind"]];
+
+// Places and outsiders by the kind of job, matched on words in the O*NET title, most specific first.
+const WORKPLACES: { match: RegExp; place: string; rooms: Room[]; outsider: string }[] = [
+  {
+    match: /emergency medical|paramedic|ambulance/i,
+    place: "Metro Ambulance Service",
+    rooms: [["ambulance", "Ambulance 12", "vehicle"], ["base", "Ambulance base", "depot"], ["ed", "Emergency department", "ward"]],
+    outsider: "Patient",
+  },
   {
     match: /nurse|physician|medical|health|therap|surgeon/i,
     place: "City General Hospital",
@@ -52,13 +61,43 @@ const WORKPLACES: { match: RegExp; place: string; rooms: [string, string, string
     outsider: "Patient",
   },
   {
-    match: /electric|plumb|carpent|construct|mechanic|install|repair/i,
+    match: /taxi|driver|chauffeur|courier/i,
+    place: "Citywide Cabs",
+    rooms: [["cab", "Your cab", "vehicle"], ["depot", "Cab depot", "depot"], ["rank", "Station taxi rank", "field"]],
+    outsider: "Passenger",
+  },
+  {
+    match: /pilot|flight/i,
+    place: "Northwind Airways",
+    rooms: [["flightdeck", "Flight deck", "vehicle"], ["ops", "Flight operations", "depot"], ["crewroom", "Crew room", "break-room"]],
+    outsider: "Passenger",
+  },
+  {
+    match: /firefight/i,
+    place: "Station 9 Fire & Rescue",
+    rooms: [["station", "Fire station floor", "depot"], ["engine", "Engine 9", "vehicle"], ["mess", "Mess room", "break-room"]],
+    outsider: "Resident",
+  },
+  {
+    match: /diver|fish|marine|boat|vessel/i,
+    place: "Harbourside Marine",
+    rooms: [["boat", "Work boat", "vehicle"], ["dock", "Harbour dock", "field"], ["kitstore", "Kit store", "stockroom"]],
+    outsider: "Client",
+  },
+  {
+    match: /agricultur|farm|crop|ranch/i,
+    place: "Greenacre Farms",
+    rooms: [["field", "North field", "field"], ["yard", "Machinery yard", "depot"], ["farmoffice", "Farm office", "private-office"]],
+    outsider: "Buyer",
+  },
+  {
+    match: /electric|plumb|carpent|construct|mechanic|install|repair|inspector/i,
     place: "Brightline Electrical",
     rooms: [["site", "Apartment site, Block C", "site"], ["siteoffice", "Site office", "site-office"], ["workshop", "Workshop", "workshop"]],
     outsider: "Site client",
   },
   {
-    match: /designer|artist|animator|graphic|illustrat/i,
+    match: /designer|artist|animator|graphic|illustrat|musician|singer/i,
     place: "Northlight Studio",
     rooms: [["studio", "The studio", "studio"], ["meeting", "Glass meeting room", "meeting-room"], ["kitchen", "Kitchen", "break-room"]],
     outsider: "Client",
@@ -70,33 +109,59 @@ const WORKPLACES: { match: RegExp; place: string; rooms: [string, string, string
     outsider: "Client",
   },
   {
+    match: /legislator|elected|council/i,
+    place: "State Assembly",
+    rooms: [["office", "Constituency office", "private-office"], ["committee", "Committee room", "meeting-room"], ["lobby", "Members' lobby", "reception"]],
+    outsider: "Constituent",
+  },
+  {
+    match: /mortician|undertaker|funeral|embalm|crematory/i,
+    place: "Ashford Funeral Services",
+    rooms: [["arrangement", "Arrangement room", "meeting-room"], ["preparation", "Preparation room", "lab"], ["front", "Front office", "reception"]],
+    outsider: "Family member",
+  },
+  {
+    match: /astronom|physicist|(?<!data )scientist|researcher/i,
+    place: "Hillcrest Research Institute",
+    rooms: [["lab", "Instrument lab", "lab"], ["office", "Shared office", "open-office"], ["computing", "Computing room", "server-room"]],
+    outsider: "Visiting collaborator",
+  },
+  {
     match: /chef|cook|food/i,
     place: "Saffron & Salt",
     rooms: [["kitchen", "Kitchen", "commercial-kitchen"], ["dining", "Dining room", "dining-room"], ["stock", "Stockroom", "stockroom"]],
     outsider: "Supplier",
   },
   {
-    match: /teacher|instructor|tutor/i,
+    match: /teacher|instructor|tutor|preschool/i,
     place: "Riverside School",
     rooms: [["classroom", "Room 12", "classroom"], ["staffroom", "Staff room", "staff-room"], ["library", "Library", "library"]],
     outsider: "Parent",
   },
+  {
+    match: /sales|retail|cashier/i,
+    place: "Marlowe's",
+    rooms: [["floor", "Shop floor", "shop-floor"], ["stock", "Stockroom", "stockroom"], ["breakroom", "Break room", "break-room"]],
+    outsider: "Customer",
+  },
 ];
 const OFFICE = {
   place: "Fairway & Co",
-  rooms: [["desks", "Open office", "open-office"], ["meeting", "Meeting room", "meeting-room"], ["kitchen", "Kitchen", "break-room"]] as [string, string, string][],
+  rooms: [["desks", "Open office", "open-office"], ["meeting", "Meeting room", "meeting-room"], ["kitchen", "Kitchen", "break-room"]] as Room[],
   outsider: "Client",
 };
 
 const singular = (title: string) => title.split(/,| and /)[0].replace(/s$/, "");
 const shorten = (text: string, max = 58) => (text.length <= max ? text : `${text.slice(0, text.lastIndexOf(" ", max))}…`);
 
-function voice(rng: Rng, languageMix: string): Voice {
+function voice(rng: Rng, languageMix: string, i: number): Voice {
+  // Distinct voices by construction: formality, verbosity and slang step through their options.
+  const offset = rng.int(0, 2);
   return {
-    formality: rng.pick(["formal", "neutral", "casual"] as const),
-    slang: rng.pick(["none", "some", "lots"] as const),
+    formality: (["formal", "neutral", "casual"] as const)[i % 3],
+    slang: (["none", "some", "lots"] as const)[Math.floor(i / 3) % 3],
     languageMix,
-    verbosity: rng.pick(["terse", "normal", "chatty"] as const),
+    verbosity: (["terse", "normal", "chatty"] as const)[(i + offset) % 3],
     quirks: [rng.pick(["says 'right, so'", "answers questions with questions", "always mentions the time", "quotes old managers", "jokes when stressed", "sends voice notes"])],
   };
 }
@@ -109,27 +174,35 @@ export function fakeCompilerDraft(request: ProviderRequest, rng: Rng): CompilerD
   const workKey = place.rooms[0][0];
   const used = new Set<string>();
   const languageMix = r === "india" ? "English with some Hindi" : "English";
+  const insiders = brief.cast.filter((c) => c.relation !== "outsider").map((c) => c.id);
+  const outsiders = brief.cast.filter((c) => c.relation === "outsider").map((c) => c.id);
+  const boss = brief.cast.find((c) => c.relation === "boss")?.id;
 
   const cast = brief.cast.map((slot, i) => {
     const pool = NAMES[r][slot.gender].filter((n) => !used.has(n));
-    const name = rng.pick(pool.length ? pool : NAMES.generic[slot.gender]);
+    const name = rng.pick(pool.length ? pool : NAMES.generic[slot.gender].filter((n) => !used.has(n)));
     used.add(name);
+    const first = name.split(" ")[0];
     const role =
       slot.relation === "boss" ? `${job} lead` : slot.relation === "senior" ? `Senior ${job.toLowerCase()}` : slot.relation === "coworker" ? job : place.outsider;
-    const v = voice(rng, languageMix);
-    // Distinct voices by construction: formality, verbosity and slang step through their options.
-    const offset = rng.int(0, 2);
-    v.formality = (["formal", "neutral", "casual"] as const)[i % 3];
-    v.verbosity = (["terse", "normal", "chatty"] as const)[(i + offset) % 3];
-    v.slang = (["none", "some", "lots"] as const)[Math.floor(i / 3) % 3];
+    const colleague = rng.pick(insiders.filter((id) => id !== slot.id).concat(["you"]));
+    const goals =
+      slot.relation === "outsider"
+        ? [{ description: "Get a straight answer and a quick fix.", involves: ["you"] }]
+        : slot.relation === "boss"
+          ? [{ description: "Hand one recurring problem to the new starter by Friday.", involves: ["you"] }]
+          : [
+              { description: `Get ${first}'s overdue piece of work signed off this week.`, involves: [colleague] },
+              ...(rng.chance(0.5) && boss && boss !== slot.id ? [{ description: "Make the case for more help on the team.", involves: [boss] }] : []),
+            ];
     return {
       id: slot.id,
       name,
       role,
-      backstory: `${name.split(" ")[0]} has been around ${place.place} for a while and knows where the bodies are buried.`,
-      wants: slot.relation === "outsider" ? "A straight answer and a quick fix." : "To get through the week without another surprise.",
+      backstory: `${first} has been around ${place.place} for a while and knows how things really get done.`,
+      goals,
       agenda: slot.relation === "boss" ? "Quietly hoping you'll take a problem off their plate." : "Wants credit for work they've been doing unnoticed.",
-      voice: v,
+      voice: voice(rng, languageMix, i),
       personality: {
         openness: Number(rng.float(0.2, 0.9).toFixed(2)),
         conscientiousness: Number(rng.float(0.2, 0.9).toFixed(2)),
@@ -141,8 +214,6 @@ export function fakeCompilerDraft(request: ProviderRequest, rng: Rng): CompilerD
     };
   });
 
-  const insiders = brief.cast.filter((c) => c.relation !== "outsider").map((c) => c.id);
-  const outsiders = brief.cast.filter((c) => c.relation === "outsider").map((c) => c.id);
   const moments = brief.week.map((slot, i) => {
     const task = brief.career.tasks[i % brief.career.tasks.length];
     const people =
@@ -155,6 +226,7 @@ export function fakeCompilerDraft(request: ProviderRequest, rng: Rng): CompilerD
     return {
       n: slot.n,
       title: shorten(task.task.replace(/\.$/, "")),
+      kindOfWork: slot.kindOfWork as CompilerDraft["moments"][number]["kindOfWork"],
       locationKey: room,
       castIds: [...new Set(people)],
       onetTaskId: task.id,
@@ -177,6 +249,15 @@ export function fakeCompilerDraft(request: ProviderRequest, rng: Rng): CompilerD
     };
   });
 
+  // Rooms in a row, each next to the one before, so they're all reachable.
+  const locations = place.rooms.map(([key, name, kind], i) => ({
+    key,
+    name,
+    kind,
+    size: (i === 0 ? "large" : "medium") as "large" | "medium",
+    nextTo: [place.rooms[i - 1]?.[0], place.rooms[i + 1]?.[0]].filter((k): k is string => !!k),
+  }));
+
   return {
     setting: {
       organisation: place.place,
@@ -192,7 +273,7 @@ export function fakeCompilerDraft(request: ProviderRequest, rng: Rng): CompilerD
       workLocationKey: workKey,
     },
     cast,
-    locations: place.rooms.map(([key, name, kind], i) => ({ key, name, kind: kind as CompilerDraft["locations"][number]["kind"], size: i === 0 ? "large" : "medium" })),
+    locations,
     meters: [
       { key: "trust", name: "Team trust", meaning: "How much your colleagues rely on you.", start: 50 },
       { key: "backlog", name: "Work under control", meaning: "How on top of the week's work you are.", start: 55 },
@@ -201,6 +282,19 @@ export function fakeCompilerDraft(request: ProviderRequest, rng: Rng): CompilerD
   };
 }
 
+/** The fake repair: a fresh fake draft, returning only the parts the request asks to replace. */
+export function fakeRepairPatch(request: ProviderRequest, rng: Rng): RepairPatch {
+  const fresh = fakeCompilerDraft(request, rng);
+  const ask = JSON.parse(request.messages.at(-1)!.content) as ReturnType<typeof repairRequest>;
+  return {
+    cast: fresh.cast.filter((c) => ask.replace.cast.includes(c.id)),
+    moments: fresh.moments.filter((m) => ask.replace.moments.includes(m.n)),
+    locations: ask.replace.locations ? fresh.locations : null,
+    you: ask.replace.you ? fresh.you : null,
+    meters: ask.replace.meters ? fresh.meters : null,
+  };
+}
+
 export function registerEngineFakers(fake: FakeProvider): FakeProvider {
-  return fake.register("compile-workplace", fakeCompilerDraft).register("compile-workplace-repair", fakeCompilerDraft);
+  return fake.register("compile-workplace", fakeCompilerDraft).register("compile-workplace-repair", fakeRepairPatch);
 }

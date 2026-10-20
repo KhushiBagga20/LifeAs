@@ -17,7 +17,8 @@
     "onet:import": "node --max-old-space-size=4096 --import tsx scripts/import-onet.ts",
     "onet:search": "node --import tsx scripts/try-search.ts",
     "llm:smoke": "node --env-file-if-exists=.env.local --import tsx scripts/llm-smoke.ts",
-    "compile:featured": "node --env-file-if-exists=.env.local --import tsx scripts/compile-featured.ts"
+    "compile:featured": "node --env-file-if-exists=.env.local --import tsx scripts/compile-featured.ts",
+    "eval:compiler": "node --env-file-if-exists=.env.local --import tsx scripts/eval-compiler.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",

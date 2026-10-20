@@ -10,7 +10,7 @@ M10 is the stretch milestone. If you're behind, skip it and do M11.
 | M0 | 🟡 **Scaffold & deploy** (all but the deploy): Next.js + TS strict, Tailwind tokens, fonts, lint, Vitest, Playwright, Postgres + Drizzle, env config, Vercel deploy | 1 | A live URL shows the empty app shell in the design system; tests run in CI |
 | M1 | ✅ **Career data:** O*NET import script, search (titles + alternate titles), CareerProfile builder, credit on About page | 2–3 | "nurse", "ux designer" and "electrician" find the right occupations; a profile page shows the six kinds-of-work bars |
 | M2 | 🟡 **AI layer** (all but the live check, which needs an API key): provider interface, adapter(s), FakeLLM, cache, cost tracking, per-run + daily caps, retries. **Choose the provider and fast-tier model** by running 3 careers on each candidate | 3–4 | A real call works; cost is recorded per call; caps refuse over-limit calls; the choice and its reasons are written under Decisions |
-| M3 | 🟡 **Career compiler** (all but compiling the featured six with the real model): Workplace generation (cast, **locations with kinds and sizes, home and work places, routines**), coverage / routine / diversity checks, repair pass; compile the 6 featured careers | 4–6 | All 6 pass the checks; reading them, the weeks feel like the real job, boring parts included |
+| M3 | 🟡 **Career compiler** (code complete and tested; the featured six still need compiling with the real model, see *M3 status*): Workplace generation (cast, **locations with kinds and sizes, home and work places, routines**), coverage / routine / diversity checks, repair pass; compile the 6 featured careers | 4–6 | All 6 pass the checks; reading them, the weeks feel like the real job, boring parts included |
 | M4 | **Moment engine:** open / exchange / resolve, task review, director (*Meanwhile* events with who goes where), **routines and `move` events**, meters and trust with clamps, event log, snapshots, determinism + replay tests | 6–8 | A full Quick shift plays end to end through the API with both FakeLLM and the real model, and the event log says where everyone is at every step |
 | M5 | **Design system + picker + expectations + briefing** | 8–9 | Screens look finished on phone and laptop; screenshots reviewed |
 | M6 | **Scene panel:** backdrops, portraits with expressions, streamed lines, replies + free text, task views, pulse, HUD | 9–12 | A Quick shift is fun to play on a phone through the panel alone; first line appears in ~2 s |
@@ -89,6 +89,34 @@ _(what · why · date)_
 - **Workplaces are stored** (`workplaces` table) and featured ones are committed as JSON under
   `src/data/workplaces/` once compiled with a real model (`npm run compile:featured`). Until then
   they compile on demand with FakeLLM, marked `source = fake`. · 2026-10-20
+- **M3 hardening (direction update of 2026-10-20).** The compiler is now staged (prepare →
+  generate → validate → repair → fallback → assemble → independent re-check), and the model
+  only proposes content that code validates:
+  - `validateWorkplace` checks the *finished* workplace on its own (schema, unique ids, every
+    reference, week shape, routine per day, coverage, cast, routines, goals), so nothing
+    malformed reaches the engine whatever produced it.
+  - The repair pass sends only the broken parts back and applies only those parts of the reply.
+  - Failures are a typed `CompileError` (invalid, provider, budget, refusal, data) with issues.
+  · 2026-10-20
+- **Moments declare the kind of work they were written for** (`kindOfWork`), checked against
+  the planned kind. This makes the coverage check meaningful for the content, not just the
+  labels: a mismatch is repaired; the fallback may relabel only if the week still matches the
+  job's mix, otherwise the compile fails. · 2026-10-20
+- **Schema changes for M4 and M7:** moments get stable ids (`m1`…); free-text `wants` became
+  structured `goals` (id, description, who it involves, status `open`) so the engine can track
+  them; places get two-way `adjacentIds` (semantic links, no coordinates) and the street joins
+  the district to the workplace's entrance; workplaces record `sources` (O*NET and compiler
+  versions). · 2026-10-20
+- **Stored workplaces are keyed on the O*NET release and `COMPILER_VERSION` too**, so new data
+  or a changed compiler compiles afresh. `COMPILER_VERSION` is 2. · 2026-10-20
+- **Three place kinds for work outside buildings:** vehicle (cab, ambulance, boat, cockpit),
+  field (farm, dock, roadside) and depot (garage, yard, station, hangar). They're approximations,
+  but better than putting a taxi driver in an open-plan office. · 2026-10-20
+- **Data gaps are passed to the model, not papered over.** The brief carries *data notes*: no
+  working-conditions survey (21 careers), unrated tasks (12), and that all data is US-based.
+  The model is told to keep those details general rather than invent them. · 2026-10-20
+- **Careers sharing a seed no longer share a cast:** every random draw includes the career
+  code. Before, all six featured careers would have had the same boss age and gender. · 2026-10-20
 - **Next.js keeps the previous page mounted (hidden)** with Cache Components. Two forms can be
   in the document at once, so the search label wraps its input instead of using an id, and
   tests only count visible text. · 2026-10-20
@@ -112,3 +140,66 @@ _(date · what was done · tests · cost spent)_
   validation, repair pass, code fixes, assembly with district and routines), realistic compiler
   fake, workplaces table, compile:featured script · 102 unit + 16 e2e passing · $0
 - Left in M3: run `npm run compile:featured` with a key, read the six weeks for realism, commit them
+- 2026-10-20 · M3 hardening: staged compiler with typed errors, part-by-part repair, safe
+  fallback, independent `validateWorkplace`, declared kind of work, goals, moment ids, place
+  links, versioned cache keys, data notes, outdoor/mobile place kinds, `eval:compiler` · 135
+  unit + 16 e2e passing; 1,846/1,846 FakeLLM compiles valid · $0
+
+## M3 status (2026-10-20)
+
+**Not complete.** Everything that can be built and tested without a model is done. The
+acceptance criterion *"All 6 pass the checks; reading them, the weeks feel like the real job,
+boring parts included"* needs the real model, and there's no `ANTHROPIC_API_KEY` yet.
+
+| Acceptance item | Status | Evidence |
+|---|---|---|
+| Profile + options + seed → validated Workplace | ✅ code | `compileWorkplace`; `validateWorkplace` returns no issues for all 6 featured careers and 10 sample careers in tests |
+| Task, cast and place references valid | ✅ | draft checks + independent check; tests for each unknown-reference case |
+| Required moment kinds, routine every day | ✅ | `WEEK_RULES` shared by planner and validator; tests for a day without routine and wrong task counts |
+| Coverage within tolerance | ✅ | planner property test over all 923 careers × 2 lengths; declared kind of work checked; repair and fallback tests |
+| Distinct names and voices, actionable goals | ✅ | tests for repeated names, voices, goals involving no one |
+| Meters valid | ✅ | schema bounds and unique ids, tested |
+| Rubrics where required | ✅ | schema (2–4 criteria) and task/non-task tests |
+| One bounded repair, safe fallback, typed failure | ✅ | tests: repair fixes coverage and missing moments; fallback relabels only within tolerance; failed repair gives `CompileError("invalid")`; ≤ 4 provider calls |
+| Timeouts, invalid output, budget | ✅ | tests: timeout → `CompileError("provider")`; invalid output twice → `invalid` after 2 calls; cap → `budget` with 0 calls |
+| Reproducible, versioned caching | ✅ | same seed → same workplace; ids change with options, seed, career and O*NET version |
+| **The six featured weeks feel like the real job** | ❌ needs a key | `npm run compile:featured`, then read them; FakeLLM output is a placeholder |
+
+**Tests run (2026-10-20, all observed):**
+- `npm run check`: lint clean, type check clean, 135/135 unit tests passing
+- `npm run e2e`: production build, then 16/16 browser tests passing
+- `npm run eval:compiler`: 16/16 valid (6 featured + 10 sample)
+- `npm run eval:compiler -- --all`: 1,846/1,846 valid (923 careers × quick and full), with FakeLLM
+
+**Not tested:** any real-model output (quality, voice, realism, real repair rates, cost and
+latency per compile); the Claude adapter is tested against a stubbed SDK client only.
+
+**Data limitations found:**
+- 21 careers have no working-conditions survey and 12 have no task ratings (listed by
+  `eval:compiler -- --all`, e.g. Taxi Drivers, Emergency Medical Technicians, Legislators,
+  Cardiologists).
+- All O*NET data is US-based, so it can't be assumed to describe workplaces in India or
+  elsewhere.
+- The place kinds are approximations for jobs outside buildings.
+- FakeLLM picks places by keywords in the job title. That's for development only, never shown
+  as fact, and the featured weeks must come from the real model.
+
+**Ready for M4:**
+- `Workplace` (stable ids for people, places, moments and goals)
+- `MomentPlan` (fixed occupational structure; editable setup, stakes and cast)
+- `Character.goals[].status` and `routine`
+- `Location.adjacentIds`
+- `getWorkplace()`, the `workplaces` table, `getLLM()`
+- FakeLLM `register()` for the engine's own fakes
+
+The parked draft on the local branch `m4/moment-engine` predates these changes. It must be
+rebased and adapted: use `goals` instead of `wants`, refer to moments by `id`, and track goal
+status as engine-owned state.
+
+**Risks for M4 and later:**
+- Real-model quality is unproven: distinct voices, believable routine moments, and whether
+  declared kinds of work match the content.
+- A full compile is one large smart-tier call (roughly 6–12k output tokens, likely tens of
+  seconds), so it needs streaming or a progress state in the UI.
+- Fixed costs per career before visitors can play it: compiling the featured six once.
+- The fit report will rest on few moments (5–12), so it must show sample sizes, as planned.

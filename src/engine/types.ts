@@ -36,6 +36,11 @@ export const workplaceLocationKinds = [
   "courtroom",
   "library",
   "server-room",
+  // Mobile and outdoor work: a cab, ambulance, boat or cockpit; a field, dock or roadside; a
+  // garage, yard, station or hangar. Approximations, so jobs outside buildings still get places.
+  "vehicle",
+  "field",
+  "depot",
 ] as const;
 export const districtLocationKinds = ["home", "cafe", "street"] as const;
 export const LocationKind = z.enum([...workplaceLocationKinds, ...districtLocationKinds]);
@@ -70,6 +75,19 @@ const Time = z.string().regex(/^\d{2}:\d{2}$/);
 export const Routine = z.object({ arrive: Time, lunch: Time, leave: Time });
 export type Routine = z.infer<typeof Routine>;
 
+/** "you" stands for the player wherever a character id is allowed. */
+export const PLAYER_ID = "you";
+
+/** Something a character is trying to get done this week. The engine owns `status`. */
+export const Goal = z.object({
+  id: z.string(),
+  description: z.string().min(1),
+  /** Cast ids or "you": who the goal depends on. */
+  involves: z.array(z.string()),
+  status: z.enum(["open", "met", "dropped"]),
+});
+export type Goal = z.infer<typeof Goal>;
+
 export const Character = z.object({
   id: z.string(),
   name: z.string().min(1),
@@ -79,7 +97,9 @@ export const Character = z.object({
   gender: z.enum(["woman", "man", "nonbinary"]),
   avatarSeed: z.string(),
   backstory: z.string().min(1),
-  wants: z.string().min(1),
+  /** Public intentions for the week, with stable ids so events can refer to them. */
+  goals: z.array(Goal).min(1).max(2),
+  /** What they want but won't say outright. */
   agenda: z.string().min(1),
   voice: Voice,
   personality: Personality,
@@ -95,6 +115,8 @@ export const Location = z.object({
   kind: LocationKind,
   size: z.enum(["small", "medium", "large"]),
   area: z.enum(["workplace", "district"]),
+  /** Places you can walk straight to from here (symmetric). The map layout uses these. */
+  adjacentIds: z.array(z.string()),
 });
 export type Location = z.infer<typeof Location>;
 
@@ -116,6 +138,8 @@ export const TaskSpec = z.object({
 export type TaskSpec = z.infer<typeof TaskSpec>;
 
 export const MomentPlan = z.object({
+  /** Stable id, e.g. "m3"; `n` is its position in the week. */
+  id: z.string(),
   n: z.number().int().min(1),
   day: Day,
   time: Time,
@@ -148,6 +172,8 @@ export const Workplace = z.object({
   careerTitle: z.string(),
   options: WorkplaceOptions,
   seed: z.string(),
+  /** What it was built from, so a new data release or compiler never reuses a stale workplace. */
+  sources: z.object({ onetVersion: z.string(), compilerVersion: z.number().int() }),
   setting: z.object({
     organisation: z.string().min(1),
     place: z.string().min(1),
