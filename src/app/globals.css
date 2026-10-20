@@ -17,6 +17,9 @@
   --energised: #4f6f57;
   --pressure: #8a6212;
   --info: #3f5c7d;
+  /* chart series (validated with the dataviz palette checks against --paper) */
+  --series-1: #bc4c35;
+  --series-2: #2f6aa8;
   color-scheme: light;
 }
 
@@ -35,6 +38,8 @@
     --energised: #8fb398;
     --pressure: #e2b45a;
     --info: #8eaed2;
+    --series-1: #d2694e;
+    --series-2: #5b8fd2;
     color-scheme: dark;
   }
 }
@@ -53,6 +58,8 @@
   --energised: #8fb398;
   --pressure: #e2b45a;
   --info: #8eaed2;
+  --series-1: #d2694e;
+  --series-2: #5b8fd2;
   color-scheme: dark;
 }
 
@@ -76,6 +83,8 @@
   --color-energised: var(--energised);
   --color-pressure: var(--pressure);
   --color-info: var(--info);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
 
   --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;

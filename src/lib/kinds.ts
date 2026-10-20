@@ -25,3 +25,5 @@ export const kindsOfWork = [
 ] as const;
 
 export type KindCode = (typeof kindsOfWork)[number]["code"];
+
+export const kindName = (code: KindCode) => kindsOfWork.find((k) => k.code === code)?.name ?? code;

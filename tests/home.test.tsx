@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import Home from "@/app/page";
+
+// Server-only pieces are covered by the e2e tests.
+vi.mock("@/components/featured-careers", () => ({ FeaturedCareers: () => null }));
+vi.mock("next/form", () => ({ default: (props: React.ComponentProps<"form">) => <form {...props} /> }));
 import { kindsOfWork } from "@/lib/kinds";
 
 describe("Home", () => {

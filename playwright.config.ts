@@ -23,9 +23,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --port ${PORT} --hostname 127.0.0.1`,
+    // A production build: closer to what visitors get, and it can run beside `npm run dev`.
+    command: `npm run build && npm run start -- --port ${PORT} --hostname 127.0.0.1`,
     url: `http://127.0.0.1:${PORT}/api/health`,
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 300_000,
   },
 });

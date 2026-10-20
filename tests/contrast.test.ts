@@ -38,6 +38,12 @@ const textPairs: [text: string, background: string][] = [
   ["info", "paper"],
 ];
 
+// Chart marks only need 3:1 against the surface (WCAG non-text contrast).
+const graphicPairs: [mark: string, background: string][] = [
+  ["series-1", "paper"],
+  ["series-2", "paper"],
+];
+
 const themes = {
   light: block(":root"),
   dark: block(':root[data-theme="dark"]'),
@@ -48,6 +54,11 @@ describe("design tokens", () => {
     for (const [text, background] of textPairs) {
       it(`${theme}: ${text} on ${background} is at least 4.5:1`, () => {
         expect(contrast(tokens[text], tokens[background])).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+    for (const [mark, background] of graphicPairs) {
+      it(`${theme}: ${mark} on ${background} is at least 3:1`, () => {
+        expect(contrast(tokens[mark], tokens[background])).toBeGreaterThanOrEqual(3);
       });
     }
   }

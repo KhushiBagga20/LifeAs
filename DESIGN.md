@@ -96,24 +96,32 @@ what let the report compare what you felt with what the job is made of.
 ---
 
 ## 2. Grounding data: O*NET
-O*NET is the US Department of Labor's free occupational database, with detailed data on about
-900 occupations, licensed **CC BY 4.0** (credit it on the About page and in every report).
-It is imported at build time by a script. Files used (check the names against the current
-release in M1):
+The O*NET® database is the US Department of Labor's free occupational database, licensed
+**CC BY 4.0**. LifeAs uses release **31.0 (August 2026)**: 1,016 occupations, of which 923 have
+the task, interest and job-zone data we need. `npm run onet:import` turns the JSON release into
+`src/data/onet/` (committed). Every page that shows the data carries the attribution O*NET asks
+for, including the "modified" sentences. Public copy uses "O*NET" only as an adjective
+("O*NET data"), with ®.
 
-| O*NET file | Used for |
+| O*NET 31.0 file | Used for |
 |---|---|
-| Occupation Data, Alternate Titles | Career search |
-| Task Statements + Task Ratings (importance, frequency) | Planning the week's moments; "typical tasks" |
+| Occupation Data, Job Titles, Sample of Reported Titles | Career search; "also called" |
+| Task Statements + Task Ratings (importance, relevance, frequency) | Planning the week's moments; "the most important tasks" |
 | Work Activities | Detail under each kind of work |
-| Interests (RIASEC profile) | "What this job is made of" (the six kinds of work) |
-| Work Context (time pressure, conflict, contact with others, consequence of error, physical conditions, …) | Pressure moments and realism |
-| Job Zones | Preparation level |
-| Related Occupations | "Try next" |
+| Career Interest Types (RIASEC profile + high points) | "What this job is made of" (the six kinds of work) |
+| Work Context + Work Context Categories | "What the days are like"; pressure moments and realism |
+| Job Zones + Job Zone Reference | Preparation level |
+| Related Occupations | "Related careers" / try next |
 
-**Matching a search:** fuzzy search over titles and alternate titles. If the match is
-ambiguous, show the top 5. If nothing matches, the AI maps the query to the closest occupation
-and says so ("closest match: Zoologists and Wildlife Biologists").
+Ratings O*NET marks `recommend_suppress = Y` are dropped.
+
+**Matching a search:** word-for-word matching over the occupation title, common titles and
+alternate titles, with light stemming. Ranking prefers exact title matches, then query words
+that appear in the occupation title, then how many of the job's titles match. Only when
+nothing matches word for word does a looser pass allow an unfinished last word and typos.
+If nothing matches at all, the page suggests other wording and the featured careers. Later,
+the AI maps the query to the closest occupation and says so ("closest match: Zoologists and
+Wildlife Biologists").
 
 ---
 
@@ -397,5 +405,5 @@ LifeAs/
 | AI provider | Compare candidates on 3 careers | M2 |
 | Fast-tier model | Compare quality vs cost | M2 |
 | Visual direction | Graphic novel, warm paper (§6.1) | M5 |
-| Featured careers | One per kind of work: Electrician (Hands-on), Data scientist (Thinking), UX designer (Creating), Registered nurse (Helping), Product manager (Leading), Accountant (Organising) | M3 |
+| Featured careers | **Decided in M1:** Electrician (Hands-on), Data scientist (Thinking), Graphic designer (Creating), Registered nurse (Helping), Lawyer (Leading), Accountant (Organising); each is its kind's first interest high point in O*NET data | Done |
 | Local pay / career-path data | Only with a real source per country; v2 | Later |

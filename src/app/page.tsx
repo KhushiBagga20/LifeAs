@@ -1,3 +1,5 @@
+import { FeaturedCareers } from "@/components/featured-careers";
+import { SearchForm } from "@/components/search-form";
 import { kindsOfWork } from "@/lib/kinds";
 
 const steps = [
@@ -30,6 +32,16 @@ export default function Home() {
           clients who remember what you did. At the end, see what the job is really made
           of, and how it suited you.
         </p>
+        <div className="mt-10">
+          <SearchForm />
+        </div>
+      </section>
+
+      <section aria-labelledby="featured" className="border-t border-line py-12">
+        <h2 id="featured" className="font-mono text-xs uppercase tracking-[0.18em] text-ink-soft">
+          Start with one of these
+        </h2>
+        <FeaturedCareers />
       </section>
 
       <section aria-labelledby="how" className="border-t border-line py-12">
