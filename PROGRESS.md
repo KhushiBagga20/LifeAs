@@ -117,6 +117,24 @@ _(what · why · date)_
   The model is told to keep those details general rather than invent them. · 2026-10-20
 - **Careers sharing a seed no longer share a cast:** every random draw includes the career
   code. Before, all six featured careers would have had the same boss age and gender. · 2026-10-20
+- **Azure provider added (Microsoft Foundry deployment `gpt-6-astra`).** It uses the documented
+  v1 Chat Completions API: `POST {resource}/openai/v1/chat/completions`, no `api-version`, the key
+  in the `api-key` header, the deployment name as `model`, `max_completion_tokens`, and
+  `response_format` `json_schema` with `strict: true`.
+  - **Plain `fetch`, no new dependency.** The adapter does its own bounded retries: up to 2 on
+    408/409/429/5xx, timeouts and network errors, honouring `retry-after-ms` / `retry-after`
+    (capped at 20 s), with a 90 s per-attempt timeout.
+  - **Schemas:** converted to the strict subset (every property required, objects closed,
+    length/range/count keywords removed); zod still enforces the full schema afterwards.
+    Optional fields are refused: AI schemas use `.nullable()`.
+  - **Reasoning effort:** `reasoning_effort` low (fast tier) / medium (smart tier), dropped
+    automatically if the deployment rejects it.
+  - **Prices:** come from `AZURE_AI_PRICE_*` because they aren't in our table and shouldn't be
+    guessed; the spending caps depend on them.
+  - **Selection:** `LLM_PROVIDER` wins; otherwise Claude if `ANTHROPIC_API_KEY` is set, else
+    Azure if its three connection variables are set, else FakeLLM.
+  - **Not verified live yet:** the variables weren't set in this environment.
+  · 2026-10-20
 - **Next.js keeps the previous page mounted (hidden)** with Cache Components. Two forms can be
   in the document at once, so the search label wraps its input instead of using an id, and
   tests only count visible text. · 2026-10-20
@@ -144,6 +162,10 @@ _(date · what was done · tests · cost spent)_
   fallback, independent `validateWorkplace`, declared kind of work, goals, moment ids, place
   links, versioned cache keys, data notes, outdoor/mobile place kinds, `eval:compiler` · 135
   unit + 16 e2e passing; 1,846/1,846 FakeLLM compiles valid · $0
+
+- 2026-10-20 · Azure provider for the Foundry deployment (v1 Chat Completions, strict JSON
+  schema, retries and timeouts, env config with prices, provider selection) · 27 new tests ·
+  not verified live (no credentials in this environment) · $0
 
 ## M3 status (2026-10-20)
 
@@ -203,3 +225,6 @@ status as engine-owned state.
   seconds), so it needs streaming or a progress state in the UI.
 - Fixed costs per career before visitors can play it: compiling the featured six once.
 - The fit report will rest on few moments (5–12), so it must show sample sizes, as planned.
+- With Azure configured, both tiers use the one deployment (`gpt-6-astra`), including the many
+  fast-tier character calls in M4. Check its prices before running weeks; add a separate fast
+  deployment if it's expensive.

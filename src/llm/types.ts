@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { Price } from "./prices";
 
 // The app's AI layer (DESIGN.md §3, §4.9). Callers ask for a tier and a zod schema; they never
 // see provider SDKs. Every result is validated before it reaches them.
@@ -65,6 +66,8 @@ export type ProviderRequest = {
 
 export interface LLMProvider {
   readonly name: string;
+  /** The provider's own price, for deployments not in src/llm/prices.ts (e.g. Azure). */
+  readonly price?: Price;
   modelFor(tier: Tier): string;
   generate(request: ProviderRequest): Promise<ProviderResponse>;
 }

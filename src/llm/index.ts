@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { getReadyDb } from "@/db/migrate";
 import { registerEngineFakers } from "@/engine/fakes";
+import { AzureProvider, azureConfigFromEnv } from "./azure";
 import { ClaudeProvider } from "./claude";
 import { FakeProvider } from "./fake";
 import { costUsd, estimateCostUsd, isPriced } from "./prices";
@@ -91,7 +92,7 @@ export function createLLM({ provider, store, caps }: { provider: LLMProvider; st
     let lastIssue = "";
     for (let attempt = 1; attempt <= 2; attempt++) {
       const promptChars = request.system.length + messages.reduce((n, m) => n + m.content.length, 0);
-      const estimate = estimateCostUsd(model, promptChars, maxTokens);
+      const estimate = estimateCostUsd(provider.price ?? model, promptChars, maxTokens);
       if (request.runId && (await store.spentForRun(request.runId)) + estimate > caps.runUsd) {
         throw new LLMError(`Run ${request.runId} would go over its $${caps.runUsd} cap`, "budget");
       }
@@ -123,8 +124,8 @@ export function createLLM({ provider, store, caps }: { provider: LLMProvider; st
         throw error;
       }
       const latencyMs = Date.now() - started;
-      // A fallback model answers under its own name and price.
-      const cost = costUsd(isPriced(response.model) ? response.model : model, response.usage);
+      // A provider's own price wins; otherwise a fallback model answers under its own name and price.
+      const cost = costUsd(provider.price ?? (isPriced(response.model) ? response.model : model), response.usage);
       const parsed = request.schema.safeParse(response.output);
 
       await store.record({
@@ -172,28 +173,53 @@ export function createLLM({ provider, store, caps }: { provider: LLMProvider; st
   return { provider, generate };
 }
 
+export type ProviderChoice = "claude" | "azure" | "fake";
+
+/**
+ * Which provider the environment asks for. LLM_PROVIDER wins; otherwise Claude when
+ * ANTHROPIC_API_KEY is set, Azure when AZURE_AI_ENDPOINT, AZURE_AI_API_KEY and
+ * AZURE_AI_DEPLOYMENT are all set, and FakeLLM when nothing is configured.
+ */
+export function chooseProvider(env: Record<string, string | undefined>): ProviderChoice {
+  const explicit = env.LLM_PROVIDER?.trim().toLowerCase();
+  if (explicit) {
+    if (explicit === "claude" || explicit === "azure" || explicit === "fake") return explicit;
+    throw new Error(`LLM_PROVIDER must be claude, azure or fake, not "${explicit}"`);
+  }
+  if (env.ANTHROPIC_API_KEY) return "claude";
+  if (env.AZURE_AI_ENDPOINT && env.AZURE_AI_API_KEY && env.AZURE_AI_DEPLOYMENT) return "azure";
+  return "fake";
+}
+
+export function providerFromEnv(env: Record<string, string | undefined>): LLMProvider {
+  switch (chooseProvider(env)) {
+    case "claude":
+      return new ClaudeProvider({ models: { smart: env.LLM_SMART_MODEL, fast: env.LLM_FAST_MODEL } });
+    case "azure":
+      return new AzureProvider({ config: azureConfigFromEnv(env) });
+    case "fake":
+      return registerEngineFakers(new FakeProvider());
+  }
+}
+
 let shared: LLM | undefined;
 
 /**
- * The app's AI layer, configured from the environment:
- * - LLM_PROVIDER: "claude" or "fake" (default: claude when ANTHROPIC_API_KEY is set, otherwise fake)
- * - LLM_SMART_MODEL / LLM_FAST_MODEL: model ids per tier (default claude-opus-5-5 for both)
+ * The app's AI layer, configured from server-side environment variables (never NEXT_PUBLIC_):
+ * - provider: see chooseProvider; Azure also needs AZURE_AI_PRICE_INPUT, AZURE_AI_PRICE_CACHED_INPUT
+ *   and AZURE_AI_PRICE_OUTPUT (US dollars per million tokens) for the spending caps
+ * - LLM_SMART_MODEL / LLM_FAST_MODEL: Claude model ids per tier (default claude-opus-5-5 for both)
  * - LLM_RUN_CAP_USD / LLM_DAILY_CAP_USD: spending caps (default $2 per run, $10 per day)
  */
 export function getLLM(): LLM {
   if (shared) return shared;
   const env = process.env;
-  const useClaude = (env.LLM_PROVIDER ?? (env.ANTHROPIC_API_KEY ? "claude" : "fake")) === "claude";
+  const provider = providerFromEnv(env);
   const caps = {
     runUsd: Number(env.LLM_RUN_CAP_USD ?? 2),
     dailyUsd: Number(env.LLM_DAILY_CAP_USD ?? 10),
   };
-  shared = useClaude
-    ? createLLM({
-        provider: new ClaudeProvider({ models: { smart: env.LLM_SMART_MODEL, fast: env.LLM_FAST_MODEL } }),
-        store: new DbCallStore(getReadyDb),
-        caps,
-      })
-    : createLLM({ provider: registerEngineFakers(new FakeProvider()), store: new MemoryCallStore(), caps });
+  // Real providers log to Postgres (cache and costs); FakeLLM keeps its cache in memory.
+  shared = createLLM({ provider, store: provider.name === "fake" ? new MemoryCallStore() : new DbCallStore(getReadyDb), caps });
   return shared;
 }

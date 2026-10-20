@@ -20,6 +20,17 @@ Open http://localhost:3000. No database setup is needed: without `DATABASE_URL` 
 embedded PGlite database in `.data/pglite`. To use Postgres instead, copy `.env.example` to
 `.env.local` and set `DATABASE_URL`.
 
+## AI provider
+
+Without any AI configuration the app uses FakeLLM, a deterministic stand-in that needs no key.
+To use a real model, copy `.env.example` to `.env.local` and set either `ANTHROPIC_API_KEY`
+(Claude) or the `AZURE_AI_*` variables for a Microsoft Foundry / Azure OpenAI deployment,
+including its prices so the spending caps work. Then check it with one small call per tier:
+
+```bash
+npm run llm:smoke
+```
+
 ## Test it
 
 ```bash

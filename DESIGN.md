@@ -155,7 +155,9 @@ Wildlife Biologists").
 - **Postgres** (Neon or Supabase free tier) with Drizzle ORM.
 - **LLM layer:** a small interface of our own, `generate<T>(tier, messages, zodSchema)`, plus
   `stream`, with one adapter per provider. The Claude adapter uses the official
-  `@anthropic-ai/sdk` with structured outputs. Every response is validated with zod.
+  `@anthropic-ai/sdk` with structured outputs. The Azure adapter calls a Microsoft Foundry /
+  Azure OpenAI deployment over the v1 Chat Completions API with plain `fetch` (`api-key` header,
+  deployment name as `model`, strict `json_schema` output). Every response is validated with zod.
 - **UI:** React, Tailwind with our own design tokens (no default palette), Framer Motion,
   lucide icons, self-hosted fonts. SVG backdrops and portraits.
 - **2D world:** PixiJS v8 (WebGL canvas) for the map and the figures, with React for everything

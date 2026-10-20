@@ -1,5 +1,6 @@
-// One small real AI call per tier, to check the key, the models and cost tracking.
-// Needs ANTHROPIC_API_KEY (or LLM_PROVIDER=claude with another credential). Costs well under $0.01.
+// One small real AI call per tier, to check the credentials, the models and cost tracking.
+// Needs a configured provider in .env.local: ANTHROPIC_API_KEY, or the AZURE_AI_* variables
+// (see .env.example). Costs a fraction of a cent per tier.
 //   npm run llm:smoke
 import { z } from "zod";
 import { getLLM } from "../src/llm";
@@ -9,7 +10,7 @@ const Answer = z.object({ greeting: z.string(), mood: z.enum(["calm", "busy", "t
 async function main() {
   const llm = getLLM();
   if (llm.provider.name === "fake") {
-    console.error("No AI provider configured: set ANTHROPIC_API_KEY in .env.local first.");
+    console.error("No AI provider configured: set ANTHROPIC_API_KEY or the AZURE_AI_* variables in .env.local first (see .env.example).");
     process.exit(1);
   }
   for (const tier of ["fast", "smart"] as const) {

@@ -13,8 +13,12 @@ A career simulator: play a sped-up work week in any job, then see what the job i
 - **Database:** with `DATABASE_URL` set, Postgres. Without it, embedded PGlite in `.data/pglite`.
   Tests use `createDatabase({ url: "", pgliteDir: "memory://" })`.
 - **AI calls:** only through `getLLM().generate({ tier, purpose, system, messages, schema })` in
-  `src/llm`. Without `ANTHROPIC_API_KEY` it uses FakeLLM; tests always use FakeLLM or a scripted
-  provider, never a real one. Register realistic fakes per purpose with `FakeProvider.register`.
+  `src/llm`. Providers: Claude (`ANTHROPIC_API_KEY`), Azure (`AZURE_AI_ENDPOINT`,
+  `AZURE_AI_API_KEY`, `AZURE_AI_DEPLOYMENT` plus `AZURE_AI_PRICE_*`), or FakeLLM when neither is
+  set; `LLM_PROVIDER` forces one. Server-side env only, never `NEXT_PUBLIC_`. Tests always use
+  FakeLLM or a scripted provider/fetch, never a real one. AI output schemas use `.nullable()`,
+  not `.optional()` (strict JSON schema can't express optional fields). Register realistic fakes
+  per purpose with `FakeProvider.register`.
 
 ## Git
 - Work on a branch per milestone (e.g. `m2/ai-layer`). When the milestone's tests pass, fast-forward
@@ -26,7 +30,7 @@ A career simulator: play a sped-up work week in any job, then see what the job i
 - `npm run check` runs lint, the type check and the unit tests
 - `npm run e2e` runs the Playwright tests at laptop and phone sizes (screenshots go to `qa/screens/`)
 - `npm run build` creates a production build
-- `npm run llm:smoke` makes one real AI call per tier (needs `ANTHROPIC_API_KEY` in `.env.local`)
+- `npm run llm:smoke` makes one real AI call per tier with the configured provider (`.env.local`)
 - `npm run db:generate` creates a migration after changing `src/db/schema.ts`
 - `npm run eval:compiler` compiles the featured six + a diverse sample and reports problems
   (`-- --all`: every career, both lengths, FakeLLM only)
