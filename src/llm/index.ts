@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { getReadyDb } from "@/db/migrate";
+import { registerEngineFakers } from "@/engine/fakes";
 import { ClaudeProvider } from "./claude";
 import { FakeProvider } from "./fake";
 import { costUsd, estimateCostUsd, isPriced } from "./prices";
@@ -193,6 +194,6 @@ export function getLLM(): LLM {
         store: new DbCallStore(getReadyDb),
         caps,
       })
-    : createLLM({ provider: new FakeProvider(), store: new MemoryCallStore(), caps });
+    : createLLM({ provider: registerEngineFakers(new FakeProvider()), store: new MemoryCallStore(), caps });
   return shared;
 }

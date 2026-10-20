@@ -10,7 +10,7 @@ M10 is the stretch milestone. If you're behind, skip it and do M11.
 | M0 | 🟡 **Scaffold & deploy** (all but the deploy): Next.js + TS strict, Tailwind tokens, fonts, lint, Vitest, Playwright, Postgres + Drizzle, env config, Vercel deploy | 1 | A live URL shows the empty app shell in the design system; tests run in CI |
 | M1 | ✅ **Career data:** O*NET import script, search (titles + alternate titles), CareerProfile builder, credit on About page | 2–3 | "nurse", "ux designer" and "electrician" find the right occupations; a profile page shows the six kinds-of-work bars |
 | M2 | 🟡 **AI layer** (all but the live check, which needs an API key): provider interface, adapter(s), FakeLLM, cache, cost tracking, per-run + daily caps, retries. **Choose the provider and fast-tier model** by running 3 careers on each candidate | 3–4 | A real call works; cost is recorded per call; caps refuse over-limit calls; the choice and its reasons are written under Decisions |
-| M3 | **Career compiler:** Workplace generation (cast, **locations with kinds and sizes, home and work places, routines**), coverage / routine / diversity checks, repair pass; compile the 6 featured careers | 4–6 | All 6 pass the checks; reading them, the weeks feel like the real job, boring parts included |
+| M3 | 🟡 **Career compiler** (all but compiling the featured six with the real model): Workplace generation (cast, **locations with kinds and sizes, home and work places, routines**), coverage / routine / diversity checks, repair pass; compile the 6 featured careers | 4–6 | All 6 pass the checks; reading them, the weeks feel like the real job, boring parts included |
 | M4 | **Moment engine:** open / exchange / resolve, task review, director (*Meanwhile* events with who goes where), **routines and `move` events**, meters and trust with clamps, event log, snapshots, determinism + replay tests | 6–8 | A full Quick shift plays end to end through the API with both FakeLLM and the real model, and the event log says where everyone is at every step |
 | M5 | **Design system + picker + expectations + briefing** | 8–9 | Screens look finished on phone and laptop; screenshots reviewed |
 | M6 | **Scene panel:** backdrops, portraits with expressions, streamed lines, replies + free text, task views, pulse, HUD | 9–12 | A Quick shift is fun to play on a phone through the panel alone; first line appears in ~2 s |
@@ -72,6 +72,23 @@ _(what · why · date)_
 - **No key yet → FakeLLM everywhere.** Without `ANTHROPIC_API_KEY` the app runs on FakeLLM
   (deterministic, schema-valid, free), so building can continue; the live check
   (`npm run llm:smoke`) and the Opus-vs-Haiku comparison wait for a key. · 2026-10-20
+- **Code decides the week's shape, the AI writes it.** Slots (day, time, kind of moment) and the
+  kind of work of every moment are planned in code from the O*NET shares by largest remainder,
+  so the coverage check holds by construction; a test runs the planner on all 923 careers. The
+  AI picks the O*NET task for each slot and writes the content. One kind of work per moment keeps
+  the fit maths simple. · 2026-10-20
+- **Lengths:** Quick shift = one day, 5 moments; Full week = 12 moments over Mon–Fri. Routine every
+  day, 1–2 pressure moments (2 when time pressure or conflict is high), 1–2 real tasks. · 2026-10-20
+- **Cast demographics come from code** (age by relation, gender independent of role; a test
+  checks the independence), and home, café and street are always added by code. · 2026-10-20
+- **The compiler's brief is JSON** in the user message, after a stable system prompt (the cached
+  prefix). FakeLLM reads the same brief, so dev and tests get believable workplaces without a key. · 2026-10-20
+- **Repair, then fix in code:** one AI repair pass with the list of problems; anything left that's
+  a simple reference mistake (bad room, task id, cast id, repeated voice) is fixed in code; only
+  structural problems fail the compile. · 2026-10-20
+- **Workplaces are stored** (`workplaces` table) and featured ones are committed as JSON under
+  `src/data/workplaces/` once compiled with a real model (`npm run compile:featured`). Until then
+  they compile on demand with FakeLLM, marked `source = fake`. · 2026-10-20
 - **Next.js keeps the previous page mounted (hidden)** with Cache Components. Two forms can be
   in the document at once, so the search label wraps its input instead of using an id, and
   tests only count visible text. · 2026-10-20
@@ -91,3 +108,7 @@ _(date · what was done · tests · cost spent)_
   effort and fallback; FakeLLM; cache + cost log in Postgres; run and daily caps; validation retry;
   truncation retry; concurrency limit; smoke script) · 81 unit passing · $0
 - Left in M2: live check and model comparison (needs `ANTHROPIC_API_KEY` in `.env.local`)
+- 2026-10-20 · M3: career compiler (slot planning, cast sampling, JSON brief, smart-tier draft,
+  validation, repair pass, code fixes, assembly with district and routines), realistic compiler
+  fake, workplaces table, compile:featured script · 102 unit + 16 e2e passing · $0
+- Left in M3: run `npm run compile:featured` with a key, read the six weeks for realism, commit them

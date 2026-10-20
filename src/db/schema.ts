@@ -25,3 +25,15 @@ export const llmCalls = pgTable(
   },
   (t) => [index("llm_calls_run_idx").on(t.runId), index("llm_calls_created_idx").on(t.createdAt)],
 );
+
+/** Compiled workplaces (DESIGN.md §4.2), keyed by career, options and seed. */
+export const workplaces = pgTable("workplaces", {
+  id: text("id").primaryKey(),
+  careerCode: text("career_code").notNull(),
+  options: jsonb("options").notNull(),
+  seed: text("seed").notNull(),
+  data: jsonb("data").notNull(),
+  /** "ai" when a real model wrote it, "fake" when FakeLLM did. */
+  source: text("source").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
