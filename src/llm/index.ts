@@ -177,8 +177,9 @@ export type ProviderChoice = "claude" | "azure" | "fake";
 
 /**
  * Which provider the environment asks for. LLM_PROVIDER wins; otherwise Claude when
- * ANTHROPIC_API_KEY is set, Azure when AZURE_AI_ENDPOINT, AZURE_AI_API_KEY and
- * AZURE_AI_DEPLOYMENT are all set, and FakeLLM when nothing is configured.
+ * ANTHROPIC_API_KEY is set, Azure when any AZURE_AI_* variable has a value (a half-filled Azure
+ * setup then fails with the names of the missing variables instead of quietly using FakeLLM),
+ * and FakeLLM when nothing is configured.
  */
 export function chooseProvider(env: Record<string, string | undefined>): ProviderChoice {
   const explicit = env.LLM_PROVIDER?.trim().toLowerCase();
@@ -187,7 +188,7 @@ export function chooseProvider(env: Record<string, string | undefined>): Provide
     throw new Error(`LLM_PROVIDER must be claude, azure or fake, not "${explicit}"`);
   }
   if (env.ANTHROPIC_API_KEY) return "claude";
-  if (env.AZURE_AI_ENDPOINT && env.AZURE_AI_API_KEY && env.AZURE_AI_DEPLOYMENT) return "azure";
+  if (Object.entries(env).some(([k, v]) => k.startsWith("AZURE_AI_") && v?.trim())) return "azure";
   return "fake";
 }
 

@@ -26,7 +26,11 @@ export class AzureConfigError extends Error {
 // e.g. <resource>.openai.azure.com, <resource>.services.ai.azure.com, and sovereign clouds.
 const AZURE_HOST = /\.azure\.(com|us|cn)$/i;
 
-/** Normalises AZURE_AI_ENDPOINT to the v1 base URL. Only https Azure hosts are accepted. */
+/**
+ * Normalises AZURE_AI_ENDPOINT to the v1 base URL. Only https Azure hosts are accepted. A full
+ * route URL copied from the portal (…/openai/v1/responses or …/openai/v1/chat/completions) is
+ * trimmed to its base, and any query string (e.g. api-version) is dropped: v1 doesn't use one.
+ */
 export function azureBaseUrl(endpoint: string): string {
   let url: URL;
   try {
@@ -38,7 +42,7 @@ export function azureBaseUrl(endpoint: string): string {
   if (!AZURE_HOST.test(url.hostname)) {
     throw new AzureConfigError("AZURE_AI_ENDPOINT must be an Azure endpoint, e.g. https://<resource>.openai.azure.com");
   }
-  const path = url.pathname.replace(/\/+$/, "");
+  const path = url.pathname.replace(/\/+$/, "").replace(/\/openai\/v1\/(responses|chat\/completions)$/, "/openai/v1");
   if (path.endsWith("/openai/v1")) return `${url.origin}${path}`;
   if (path === "" || path === "/openai") return `${url.origin}/openai/v1`;
   throw new AzureConfigError(

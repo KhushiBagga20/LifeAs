@@ -132,7 +132,10 @@ _(what · why · date)_
   - **Prices:** come from `AZURE_AI_PRICE_*` because they aren't in our table and shouldn't be
     guessed; the spending caps depend on them.
   - **Selection:** `LLM_PROVIDER` wins; otherwise Claude if `ANTHROPIC_API_KEY` is set, else
-    Azure if its three connection variables are set, else FakeLLM.
+    Azure if any `AZURE_AI_*` variable has a value, else FakeLLM. A half-filled Azure setup fails
+    with the names of the missing variables rather than quietly falling back to FakeLLM.
+  - **Endpoint:** a full route URL copied from the portal (`…/openai/v1/responses` or
+    `…/openai/v1/chat/completions`, with or without a query string) is trimmed to the v1 base.
   - **Not verified live yet:** the variables weren't set in this environment.
   · 2026-10-20
 - **Next.js keeps the previous page mounted (hidden)** with Cache Components. Two forms can be
@@ -166,6 +169,9 @@ _(date · what was done · tests · cost spent)_
 - 2026-10-20 · Azure provider for the Foundry deployment (v1 Chat Completions, strict JSON
   schema, retries and timeouts, env config with prices, provider selection) · 27 new tests ·
   not verified live (no credentials in this environment) · $0
+
+- 2026-10-20 · Azure setup fixes: pasted route URLs accepted, half-filled setups name the
+  missing variables · 30 Azure tests, 165 unit + 16 e2e passing · $0
 
 ## M3 status (2026-10-20)
 

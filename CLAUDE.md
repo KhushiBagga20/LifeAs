@@ -14,8 +14,8 @@ A career simulator: play a sped-up work week in any job, then see what the job i
   Tests use `createDatabase({ url: "", pgliteDir: "memory://" })`.
 - **AI calls:** only through `getLLM().generate({ tier, purpose, system, messages, schema })` in
   `src/llm`. Providers: Claude (`ANTHROPIC_API_KEY`), Azure (`AZURE_AI_ENDPOINT`,
-  `AZURE_AI_API_KEY`, `AZURE_AI_DEPLOYMENT` plus `AZURE_AI_PRICE_*`), or FakeLLM when neither is
-  set; `LLM_PROVIDER` forces one. Server-side env only, never `NEXT_PUBLIC_`. Tests always use
+  `AZURE_AI_API_KEY`, `AZURE_AI_DEPLOYMENT` plus `AZURE_AI_PRICE_*`; any of them set selects Azure
+  and missing ones are named), or FakeLLM when neither is set; `LLM_PROVIDER` forces one. Server-side env only, never `NEXT_PUBLIC_`. Tests always use
   FakeLLM or a scripted provider/fetch, never a real one. AI output schemas use `.nullable()`,
   not `.optional()` (strict JSON schema can't express optional fields). Register realistic fakes
   per purpose with `FakeProvider.register`.

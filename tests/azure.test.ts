@@ -109,6 +109,13 @@ describe("Azure configuration", () => {
     expect(azureBaseUrl("https://r.cognitiveservices.azure.com/openai")).toBe("https://r.cognitiveservices.azure.com/openai/v1");
   });
 
+  it("trims a full route URL copied from the portal to the v1 base", () => {
+    expect(azureBaseUrl("https://r.services.ai.azure.com/openai/v1/responses")).toBe("https://r.services.ai.azure.com/openai/v1");
+    expect(azureBaseUrl("https://r.openai.azure.com/openai/v1/chat/completions/")).toBe("https://r.openai.azure.com/openai/v1");
+    expect(azureBaseUrl("https://r.openai.azure.com/openai/v1/responses?api-version=preview")).toBe("https://r.openai.azure.com/openai/v1");
+    expect(() => azureBaseUrl("https://r.openai.azure.com/openai/v1/embeddings")).toThrow(/resource endpoint/);
+  });
+
   it("rejects endpoints that aren't https Azure resource endpoints", () => {
     expect(() => azureBaseUrl("http://r.openai.azure.com")).toThrow(/https/);
     expect(() => azureBaseUrl("https://example.com/openai/v1")).toThrow(/Azure endpoint/);
@@ -130,6 +137,27 @@ describe("Azure configuration", () => {
     expect(() => chooseProvider({ LLM_PROVIDER: "gpt" })).toThrow(/must be claude, azure or fake/);
     expect(providerFromEnv(env).name).toBe("azure");
     expect(() => providerFromEnv({ LLM_PROVIDER: "azure" })).toThrow(AzureConfigError);
+  });
+
+  it("names the missing variables when Azure is half set up, instead of quietly using FakeLLM", () => {
+    const half = { AZURE_AI_ENDPOINT: env.AZURE_AI_ENDPOINT, AZURE_AI_API_KEY: KEY, AZURE_AI_DEPLOYMENT: "", AZURE_AI_PRICE_INPUT: "" };
+    expect(chooseProvider(half)).toBe("azure");
+    const error = (() => {
+      try {
+        providerFromEnv(half);
+      } catch (e) {
+        return e as Error;
+      }
+    })();
+    expect(error).toBeInstanceOf(AzureConfigError);
+    expect(error?.message).toMatch(/AZURE_AI_DEPLOYMENT, AZURE_AI_PRICE_INPUT, AZURE_AI_PRICE_CACHED_INPUT, AZURE_AI_PRICE_OUTPUT/);
+    expect(error?.message).not.toContain(KEY);
+  });
+
+  it("treats empty AZURE_AI_* variables (a copied template) as not configured", () => {
+    const template = Object.fromEntries(Object.keys(env).map((k) => [k, ""]));
+    expect(chooseProvider(template)).toBe("fake");
+    expect(chooseProvider({ ...template, AZURE_AI_DEPLOYMENT: "gpt-6-astra", ANTHROPIC_API_KEY: "x" })).toBe("claude");
   });
 
   it("is never configured through NEXT_PUBLIC_ variables", () => {

@@ -8,7 +8,14 @@ import { getLLM } from "../src/llm";
 const Answer = z.object({ greeting: z.string(), mood: z.enum(["calm", "busy", "tired"]) });
 
 async function main() {
-  const llm = getLLM();
+  let llm;
+  try {
+    llm = getLLM();
+  } catch (error) {
+    // Configuration problems (e.g. missing AZURE_AI_* variables) get a plain message.
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  }
   if (llm.provider.name === "fake") {
     console.error("No AI provider configured: set ANTHROPIC_API_KEY or the AZURE_AI_* variables in .env.local first (see .env.example).");
     process.exit(1);
