@@ -9,7 +9,7 @@ import * as schema from "./schema";
 
 export type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-export const LOCAL_PGLITE_DIR = ".data/pglite";
+export const LOCAL_PGLITE_DIR = ".data/blockc";
 
 type Options = {
   /** Postgres connection string. Defaults to DATABASE_URL. */

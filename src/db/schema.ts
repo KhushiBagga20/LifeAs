@@ -1,6 +1,6 @@
 import { boolean, index, integer, jsonb, numeric, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 
-// Drizzle table definitions. See DESIGN.md §4.1.
+// Drizzle table definitions. Game tables (rooms, seats, events) arrive in G2; see DESIGN.md §3.
 
 /** Every real AI call: the cost log, and the cache (by `cacheKey`). */
 export const llmCalls = pgTable(
@@ -25,15 +25,3 @@ export const llmCalls = pgTable(
   },
   (t) => [index("llm_calls_run_idx").on(t.runId), index("llm_calls_created_idx").on(t.createdAt)],
 );
-
-/** Compiled workplaces (DESIGN.md §4.2), keyed by career, options and seed. */
-export const workplaces = pgTable("workplaces", {
-  id: text("id").primaryKey(),
-  careerCode: text("career_code").notNull(),
-  options: jsonb("options").notNull(),
-  seed: text("seed").notNull(),
-  data: jsonb("data").notNull(),
-  /** "ai" when a real model wrote it, "fake" when FakeLLM did. */
-  source: text("source").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});

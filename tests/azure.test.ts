@@ -2,14 +2,10 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { compileWorkplace, CompilerDraft, RepairPatch, validateWorkplace } from "@/engine/compiler";
-import { fakeCompilerDraft } from "@/engine/fakes";
-import { createRng } from "@/lib/rng";
 import { chooseProvider, createLLM, providerFromEnv } from "@/llm";
 import { AzureConfigError, azureBaseUrl, azureConfigFromEnv, AzureProvider, strictSchema, type AzureConfig } from "@/llm/azure";
 import { MemoryCallStore } from "@/llm/store";
 import type { ProviderRequest } from "@/llm/types";
-import { loadMeta, loadProfile } from "./helpers";
 
 // A fake key that would be easy to spot if it ever leaked into an error or log.
 const KEY = "test-key-should-never-appear-0123456789";
@@ -185,14 +181,14 @@ describe("strictSchema", () => {
     expect(schema.properties.mood.enum).toEqual(["calm", "busy"]);
   });
 
-  it("handles the compiler's real schemas, nested objects included", () => {
-    for (const s of [CompilerDraft, RepairPatch]) {
-      const text = JSON.stringify(strictSchema(s));
-      expect(text).not.toMatch(/"(minLength|maxLength|pattern|minItems|maxItems|minimum|maximum)"/);
-    }
-    const draft = strictSchema(CompilerDraft) as { properties: { cast: { items: { additionalProperties: boolean; required: string[] } } } };
-    expect(draft.properties.cast.items.additionalProperties).toBe(false);
-    expect(draft.properties.cast.items.required).toContain("goals");
+  it("closes nested objects inside arrays and nullable fields", () => {
+    const Nested = z.object({
+      players: z.array(z.object({ id: z.string().min(1), vote: z.object({ target: z.string() }).nullable() })).min(1),
+    });
+    const schema = strictSchema(Nested) as { properties: { players: { items: { additionalProperties: boolean; required: string[] } } } };
+    expect(schema.properties.players.items.additionalProperties).toBe(false);
+    expect(schema.properties.players.items.required).toEqual(["id", "vote"]);
+    expect(JSON.stringify(schema)).not.toMatch(/"(minLength|minItems)"/);
   });
 
   it("refuses optional fields, which strict mode can't express", () => {
@@ -357,38 +353,5 @@ describe("Azure through the AI layer", () => {
     const { llm, calls } = llmWith([completion(valid)], 0.0001);
     await expect(generate(llm)).rejects.toMatchObject({ kind: "budget" });
     expect(calls).toHaveLength(0);
-  });
-
-  it("drives the career compiler unchanged: validation, repair and fallback still apply", async () => {
-    // Azure answers with what FakeLLM's compiler would write, but every moment points at an
-    // unknown place; the repair pass fixes it through the same provider.
-    const f = {
-      calls: [] as Call[],
-      fetchImpl: async (url: string, init: RequestInit) => {
-        const body = JSON.parse(String(init.body)) as { messages: { role: string; content: string }[]; response_format: { json_schema: { name: string } } };
-        f.calls.push({ url, init, body });
-        const req = { messages: body.messages.slice(1) } as unknown as ProviderRequest;
-        const draft = fakeCompilerDraft(req, createRng("azure"));
-        if (body.response_format.json_schema.name === "compile-workplace") {
-          return completion({ ...draft, moments: draft.moments.map((m) => ({ ...m, locationKey: "moon" })) });
-        }
-        const ask = JSON.parse(body.messages.at(-1)!.content) as { replace: { moments: number[] } };
-        return completion({ cast: [], moments: draft.moments.filter((m) => ask.replace.moments.includes(m.n)), locations: null, you: null, meters: null });
-      },
-    };
-    const p = new AzureProvider({ config, fetch: f.fetchImpl, sleep: noSleep });
-    const llm = createLLM({ provider: p, store: new MemoryCallStore(), caps: { runUsd: 2, dailyUsd: 10 } });
-    const profile = loadProfile("29-1141.00");
-    const { workplace, report } = await compileWorkplace(
-      { profile, meta: loadMeta(), options: { level: "junior", workplace: "", location: "", length: "quick" }, seed: "azure" },
-      llm,
-    );
-    expect(report.calls).toBe(2);
-    expect(report.repairIssues.some((i) => /moon/.test(i))).toBe(true);
-    expect(validateWorkplace(workplace, profile)).toEqual([]);
-    expect(f.calls.map((c) => (c.body as { response_format: { json_schema: { name: string } } }).response_format.json_schema.name)).toEqual([
-      "compile-workplace",
-      "compile-workplace-repair",
-    ]);
   });
 });

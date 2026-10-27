@@ -4,7 +4,7 @@ import type { LLMProvider, ProviderRequest, ProviderResponse } from "./types";
 
 // FakeLLM: deterministic, schema-valid answers with seeded variety, for every automated test and
 // most UI work (DESIGN.md §8). The same request always gets the same answer. Purpose-specific
-// fakers (registered by the compiler and engine) produce realistic content; anything without
+// fakers (registered by the game) produce realistic content; anything without
 // one gets a generic answer built from its JSON schema.
 
 export type Faker = (request: ProviderRequest, rng: Rng) => unknown;

@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { getReadyDb } from "@/db/migrate";
-import { registerEngineFakers } from "@/engine/fakes";
 import { AzureProvider, azureConfigFromEnv } from "./azure";
 import { ClaudeProvider } from "./claude";
 import { FakeProvider } from "./fake";
@@ -199,7 +198,7 @@ export function providerFromEnv(env: Record<string, string | undefined>): LLMPro
     case "azure":
       return new AzureProvider({ config: azureConfigFromEnv(env) });
     case "fake":
-      return registerEngineFakers(new FakeProvider());
+      return new FakeProvider();
   }
 }
 

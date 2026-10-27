@@ -6,5 +6,5 @@ export default defineConfig({
   dialect: "postgresql",
   schema: "./src/db/schema.ts",
   out: "./src/db/migrations",
-  ...(url ? { dbCredentials: { url } } : { driver: "pglite", dbCredentials: { url: ".data/pglite" } }),
+  ...(url ? { dbCredentials: { url } } : { driver: "pglite", dbCredentials: { url: ".data/blockc" } }),
 });

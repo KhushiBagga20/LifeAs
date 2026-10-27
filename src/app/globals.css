@@ -1,65 +1,25 @@
 @import "tailwindcss";
 
-/* Design tokens (DESIGN.md §6.1). Components use these through Tailwind utilities
-   (bg-paper, text-ink, border-line, …); Tailwind's default palette is switched off. */
+/* Design tokens (DESIGN.md §4.3): a night city. Components use them through Tailwind utilities
+   (bg-bg, bg-surface, text-text, text-soft, border-line, text-amber, text-crew, text-block…);
+   Tailwind's default palette is switched off. Contrast is checked in tests/contrast.test.ts. */
 
 :root {
-  --paper: #f6f1e7;
-  --paper-2: #efe8da;
-  --paper-3: #e6ddcb;
-  --ink: #1d1b18;
-  --ink-soft: #5b554c;
-  --line: rgba(29, 27, 24, 0.12);
-  --line-strong: rgba(29, 27, 24, 0.24);
-  --accent: #bc4c35;
-  --accent-ink: #a3402b;
-  --on-accent: #fff8f0;
-  --energised: #4f6f57;
-  --pressure: #8a6212;
-  --info: #3f5c7d;
-  /* chart series (validated with the dataviz palette checks against --paper) */
-  --series-1: #bc4c35;
-  --series-2: #2f6aa8;
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #15130f;
-    --paper-2: #1d1a15;
-    --paper-3: #26221c;
-    --ink: #f3ede2;
-    --ink-soft: #b9b0a2;
-    --line: rgba(243, 237, 226, 0.12);
-    --line-strong: rgba(243, 237, 226, 0.24);
-    --accent: #e07a5f;
-    --accent-ink: #ec937b;
-    --on-accent: #1d1b18;
-    --energised: #8fb398;
-    --pressure: #e2b45a;
-    --info: #8eaed2;
-    --series-1: #d2694e;
-    --series-2: #5b8fd2;
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme="dark"] {
-  --paper: #15130f;
-  --paper-2: #1d1a15;
-  --paper-3: #26221c;
-  --ink: #f3ede2;
-  --ink-soft: #b9b0a2;
-  --line: rgba(243, 237, 226, 0.12);
-  --line-strong: rgba(243, 237, 226, 0.24);
-  --accent: #e07a5f;
-  --accent-ink: #ec937b;
-  --on-accent: #1d1b18;
-  --energised: #8fb398;
-  --pressure: #e2b45a;
-  --info: #8eaed2;
-  --series-1: #d2694e;
-  --series-2: #5b8fd2;
+  --bg: #0b0f1a;
+  --surface: #131a2b;
+  --surface-2: #1b2338;
+  --line: rgba(200, 215, 255, 0.12);
+  --line-strong: rgba(200, 215, 255, 0.24);
+  --text: #eef1f8;
+  --text-soft: #a3adc4;
+  /* sodium streetlight: the primary accent */
+  --amber: #f2b24a;
+  --on-amber: #1c1406;
+  /* teams */
+  --crew: #ff5fae;
+  --block: #3fd2ea;
+  --danger: #ff7a7a;
+  --success: #5fd39a;
   color-scheme: dark;
 }
 
@@ -70,47 +30,44 @@
 @theme inline {
   --color-transparent: transparent;
   --color-current: currentColor;
-  --color-paper: var(--paper);
-  --color-paper-2: var(--paper-2);
-  --color-paper-3: var(--paper-3);
-  --color-ink: var(--ink);
-  --color-ink-soft: var(--ink-soft);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-on-accent: var(--on-accent);
-  --color-energised: var(--energised);
-  --color-pressure: var(--pressure);
-  --color-info: var(--info);
-  --color-series-1: var(--series-1);
-  --color-series-2: var(--series-2);
+  --color-text: var(--text);
+  --color-soft: var(--text-soft);
+  --color-amber: var(--amber);
+  --color-on-amber: var(--on-amber);
+  --color-crew: var(--crew);
+  --color-block: var(--block);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
 
-  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 html {
-  background: var(--paper);
+  background: var(--bg);
 }
 
 body {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans);
-  font-feature-settings: "ss01", "cv11";
 }
 
 ::selection {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--amber);
+  color: var(--on-amber);
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent-ink);
+  outline: 2px solid var(--amber);
   outline-offset: 3px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
