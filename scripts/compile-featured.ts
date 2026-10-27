@@ -12,7 +12,7 @@ import { getLLM } from "../src/llm";
 async function main() {
   const llm = getLLM();
   if (llm.provider.name === "fake") {
-    console.error("Featured workplaces must be written by a real model: set ANTHROPIC_API_KEY in .env.local.");
+    console.error("Featured workplaces must be written by a real model: configure Claude or Azure in .env.local (see .env.example).");
     process.exit(1);
   }
   const meta = await readOnetMeta();
@@ -32,7 +32,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+// Exit explicitly: the database connection would otherwise keep Node running after the work is done.
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
