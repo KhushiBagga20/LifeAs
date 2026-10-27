@@ -1,6 +1,9 @@
+import { after } from "next/server";
 import { z } from "zod";
 import { getReadyDb } from "@/db/migrate";
+import { getLLM } from "@/llm";
 import { RoomError, type RoomDeps } from "./service";
+import { runTalk } from "./talk";
 
 // Shared bits for the room API routes: the deps, the seat token header and error responses.
 
@@ -11,6 +14,17 @@ export async function roomDeps(): Promise<RoomDeps> {
 }
 
 export const tokenOf = (request: Request) => request.headers.get(TOKEN_HEADER);
+
+/** After the response is sent, lets the AI neighbours and the narrator say what's due. */
+export function talkAfter(code: string) {
+  after(async () => {
+    try {
+      await runTalk({ ...(await roomDeps()), llm: getLLM() }, code);
+    } catch (error) {
+      if (!(error instanceof RoomError)) console.error("AI talk failed", error);
+    }
+  });
+}
 
 const STATUS: Record<RoomError["code"], number> = {
   "not-found": 404,

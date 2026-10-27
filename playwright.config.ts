@@ -27,6 +27,8 @@ export default defineConfig({
     command: `npm run build && npm run start -- --port ${PORT} --hostname 127.0.0.1`,
     url: `http://127.0.0.1:${PORT}/api/health`,
     reuseExistingServer: !process.env.CI,
+    // Tests never call a real model, even with AZURE_AI_* set in .env.local.
+    env: { LLM_PROVIDER: "fake" },
     timeout: 300_000,
   },
 });

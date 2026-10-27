@@ -1,32 +1,20 @@
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { and, asc, eq, gt } from "drizzle-orm";
 import { z } from "zod";
-import { nightIntent, pointIntent, voteIntent } from "@/ai/brain";
 import { personasFor, type Persona } from "@/ai/personas";
-import type { Database } from "@/db";
 import { roomEvents, rooms, roomSeats } from "@/db/schema";
-import { act, advance, createGame, DURATIONS, MAX_NAME, nightActors } from "@/game/engine";
+import { act, createGame, MAX_NAME } from "@/game/engine";
 import { MAX_SEATS, MIN_SEATS } from "@/game/lineup";
-import { RuleError, type GameEvent, type GameState, type Intent, type Phase, type SeatId, type Settings } from "@/game/types";
+import { RuleError, type GameEvent, type GameState, type Intent, type SeatId, type Settings } from "@/game/types";
 import { viewFor, type SeatView } from "@/game/view";
-import { createRng } from "@/lib/rng";
+import { hashToken, newMeta, readMeta, requireSeat, RoomError, seatForToken, withRoom, type RoomDeps } from "./room";
+import { catchUp, react, tick } from "./timeline";
 
 // The room service (DESIGN.md §3). The server owns every game: clients send intents with their
 // seat token, and the engine decides. Time moves on "tick on read": every request first catches
-// the game up to now, running timers and the AI's planned moves in time order.
+// the game up to now, running timers and the AI's planned moves in time order (./timeline).
 
-export type Clock = () => number;
-export type RoomDeps = { db: Database; clock: Clock };
-
-export class RoomError extends Error {
-  constructor(
-    readonly code: "not-found" | "forbidden" | "full" | "started" | "bad-request" | "slow-down" | "rule",
-    message: string,
-  ) {
-    super(message);
-    this.name = "RoomError";
-  }
-}
+export { RoomError, type RoomDeps } from "./room";
 
 export const DEFAULT_SETTINGS: Settings = { seats: 7, boss: true, influencer: true, pace: "normal" };
 export const SettingsPatch = z.object({
@@ -50,63 +38,11 @@ export const IntentBody: z.ZodType<Intent> = z.discriminatedUnion("type", [
   z.object({ type: z.literal("ghost-chat"), text }),
 ]);
 
-/** A move an AI seat will make at a set time; the intent is worked out when it happens. */
-type Plan = { seat: SeatId; kind: "night" | "vote" | "point"; dueAt: number; phase: Phase; round: number };
-
-type Meta = {
-  personas: Record<SeatId, Persona>;
-  plans: Plan[];
-  /** Which phase the plans are for ("round/phase"), so each phase is planned exactly once. */
-  planned: string;
-  /** Last chat time per human seat, for the rate limit. */
-  chatAt: Record<SeatId, number>;
-};
-
 const CODE_LETTERS = "BCDFGHJKLMNPQRSTVWXZ";
 const CHAT_GAP_MS = 1_200;
 
-const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 const newToken = () => randomBytes(24).toString("base64url");
 const cleanName = (name: string) => name.replace(/\s+/g, " ").trim().slice(0, MAX_NAME);
-const seatNumber = (id: SeatId) => Number(id.slice(1));
-
-type RoomRow = typeof rooms.$inferSelect;
-type SeatRow = typeof roomSeats.$inferSelect;
-type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
-
-/** Runs `fn` with the room locked, then saves what it changed. */
-async function withRoom<T>(
-  { db }: RoomDeps,
-  code: string,
-  fn: (ctx: { room: RoomRow; seats: SeatRow[]; events: GameEvent[]; tx: Tx }) => Promise<{ room?: Partial<RoomRow>; events?: GameEvent[]; result: T }>,
-): Promise<T> {
-  return db.transaction(async (tx) => {
-    const [room] = await tx.select().from(rooms).where(eq(rooms.code, code.toUpperCase())).for("update");
-    if (!room) throw new RoomError("not-found", "No room with that code");
-    const seats = (await tx.select().from(roomSeats).where(eq(roomSeats.roomCode, room.code))).sort((a, b) => seatNumber(a.seatId) - seatNumber(b.seatId));
-    const events = room.status === "lobby" ? [] : (await tx.select().from(roomEvents).where(eq(roomEvents.roomCode, room.code)).orderBy(asc(roomEvents.seq))).map((r) => r.event as GameEvent);
-    const out = await fn({ room, seats, events, tx });
-    if (out.events?.length) {
-      await tx.insert(roomEvents).values(out.events.map((e) => ({ roomCode: room.code, seq: e.seq, event: e })));
-    }
-    if (out.room) {
-      await tx.update(rooms).set({ ...out.room, version: room.version + 1, updatedAt: new Date() }).where(eq(rooms.code, room.code));
-    }
-    return out.result;
-  });
-}
-
-function seatForToken(seats: SeatRow[], token: string | null): SeatRow | null {
-  if (!token) return null;
-  const hash = hashToken(token);
-  return seats.find((s) => s.tokenHash === hash) ?? null;
-}
-
-function requireSeat(seats: SeatRow[], token: string | null): SeatRow {
-  const seat = seatForToken(seats, token);
-  if (!seat) throw new RoomError("forbidden", "You're not in this room");
-  return seat;
-}
 
 /** `seed` is for tests, so a game can be replayed; rooms made over HTTP always get a random one. */
 export async function createRoom(deps: RoomDeps, input: { name: string; settings?: z.infer<typeof SettingsPatch>; seed?: string }) {
@@ -118,7 +54,7 @@ export async function createRoom(deps: RoomDeps, input: { name: string; settings
     const code = Array.from(randomBytes(4), (b) => CODE_LETTERS[b % CODE_LETTERS.length]).join("");
     const inserted = await deps.db
       .insert(rooms)
-      .values({ code, status: "lobby", settings, hostSeat: "s1", seed: input.seed ?? randomBytes(8).toString("hex"), state: null, meta: { personas: {}, plans: [], planned: "", chatAt: {} } satisfies Meta })
+      .values({ code, status: "lobby", settings, hostSeat: "s1", seed: input.seed ?? randomBytes(8).toString("hex"), state: null, meta: newMeta() })
       .onConflictDoNothing()
       .returning({ code: rooms.code });
     if (!inserted.length) continue;
@@ -174,85 +110,10 @@ export async function startGame(deps: RoomDeps, code: string, token: string | nu
       ...aiSeats.map((a) => ({ id: a.seatId, name: a.name, kind: "ai" as const })),
     ];
     const step = createGame({ players, settings, seed: room.seed, now });
-    const meta: Meta = { personas: Object.fromEntries(aiSeats.map((a) => [a.seatId, a.persona])), plans: [], planned: "", chatAt: {} };
+    // The narrator's opening line is the first thing the talk scheduler queues.
+    const meta = react(step.state, newMeta(Object.fromEntries(aiSeats.map((a) => [a.seatId, a.persona]))), step.events);
     return { room: { status: "playing", state: step.state, meta }, events: step.events, result: { started: true } };
   });
-}
-
-const phaseStart = (s: GameState) => s.endsAt - (s.phase === "ended" ? 0 : DURATIONS[s.settings.pace][s.phase as Exclude<Phase, "ended">]);
-
-/** The AI's moves for the phase that just began, spread out so they feel human. */
-function planPhase(state: GameState, meta: Meta): Plan[] {
-  const start = phaseStart(state);
-  const length = state.endsAt - start;
-  const rng = createRng(`${state.seed}/${state.round}/${state.phase}/plans`);
-  const ai = state.seats.filter((s) => s.alive && s.kind === "ai" && meta.personas[s.id]);
-  const at = (from: number, to: number) => start + Math.round(rng.float(from, to) * length);
-  if (state.phase === "night") {
-    const actors = new Set(nightActors(state).map((a) => a.seat));
-    return ai.filter((s) => actors.has(s.id)).map((s) => ({ seat: s.id, kind: "night", dueAt: at(0.15, 0.7), phase: "night", round: state.round }));
-  }
-  if (state.phase === "vote") return ai.map((s) => ({ seat: s.id, kind: "vote", dueAt: at(0.15, 0.8), phase: "vote", round: state.round }));
-  if (state.phase === "day") {
-    return ai.filter(() => rng.chance(0.6)).map((s) => ({ seat: s.id, kind: "point", dueAt: at(0.3, 0.85), phase: "day", round: state.round }));
-  }
-  return [];
-}
-
-function aiIntent(plan: Plan, state: GameState, events: GameEvent[], meta: Meta): Intent | null {
-  const { view, events: visible } = viewFor(state, events, plan.seat);
-  const persona = meta.personas[plan.seat];
-  if (!persona) return null;
-  const salt = String(state.seq);
-  if (plan.kind === "night") return nightIntent(view, visible, persona, salt);
-  if (plan.kind === "vote") return voteIntent(view, visible, persona, salt);
-  return pointIntent(view, visible, persona, salt);
-}
-
-/**
- * Catches a game up to `now`: AI moves and phase deadlines happen in time order, one phase at a
- * time, and each phase gets its AI plans when it begins. Returns the new state, meta and events.
- */
-export function catchUp(state: GameState, meta: Meta, log: GameEvent[], now: number): { state: GameState; meta: Meta; events: GameEvent[] } {
-  let s = state;
-  let m = meta;
-  const fresh: GameEvent[] = [];
-  const run = (step: { state: GameState; events: GameEvent[] }) => {
-    s = step.state;
-    fresh.push(...step.events);
-    return step.events.length > 0;
-  };
-  for (let guard = 0; guard < 1_000 && s.phase !== "ended"; guard++) {
-    const key = `${s.round}/${s.phase}`;
-    if (m.planned !== key) m = { ...m, planned: key, plans: planPhase(s, m) };
-    const next = [...m.plans].sort((a, b) => a.dueAt - b.dueAt || seatNumber(a.seat) - seatNumber(b.seat))[0];
-    if (next && next.dueAt <= now && next.dueAt <= s.endsAt) {
-      m = { ...m, plans: m.plans.filter((p) => p !== next) };
-      const intent = aiIntent(next, s, [...log, ...fresh], m);
-      if (intent) {
-        try {
-          run(act(s, next.seat, intent, next.dueAt));
-        } catch (error) {
-          if (!(error instanceof RuleError)) throw error;
-        }
-      }
-      // The last move of a night or vote ends it straight away.
-      run(advance(s, next.dueAt));
-      continue;
-    }
-    // Step to the phase deadline (or to now), never past it, so the next phase's AI gets its turn.
-    if (!run(advance(s, Math.min(now, s.endsAt)))) break;
-  }
-  return { state: s, meta: m, events: fresh };
-}
-
-/** Moves the game on to now (if it's running) and returns what changed. */
-function tick(room: RoomRow, events: GameEvent[], now: number) {
-  if (room.status !== "playing" || !room.state) return null;
-  const meta = room.meta as Meta;
-  const caught = catchUp(room.state as GameState, meta, events, now);
-  if (!caught.events.length && caught.meta.planned === meta.planned && caught.meta.plans.length === meta.plans.length) return null;
-  return caught;
 }
 
 export async function actInRoom(deps: RoomDeps, code: string, token: string | null, intent: Intent) {
@@ -261,7 +122,7 @@ export async function actInRoom(deps: RoomDeps, code: string, token: string | nu
     const seat = requireSeat(seats, token);
     if (room.status === "lobby") throw new RoomError("bad-request", "The game hasn't started yet");
     let state = room.state as GameState;
-    let meta = room.meta as Meta;
+    let meta = readMeta(room.meta);
     const fresh: GameEvent[] = [];
     const caught = tick(room, events, now);
     if (caught) {
@@ -278,6 +139,8 @@ export async function actInRoom(deps: RoomDeps, code: string, token: string | nu
       const step = act(state, seat.seatId, intent, now);
       state = step.state;
       fresh.push(...step.events);
+      // AI neighbours may want to answer.
+      meta = react(state, meta, step.events);
     } catch (error) {
       if (error instanceof RuleError) throw new RoomError("rule", error.message);
       throw error;
@@ -305,6 +168,8 @@ export type Poll = {
   /** Events this seat may see with seq greater than `since`. */
   events: GameEvent[];
   lastSeq: number;
+  /** AI neighbours writing a public message right now. */
+  typing: SeatId[];
 };
 
 export async function pollRoom(deps: RoomDeps, code: string, token: string | null, since = -1): Promise<Poll> {
@@ -313,7 +178,7 @@ export async function pollRoom(deps: RoomDeps, code: string, token: string | nul
     const me = seatForToken(seats, token);
     const caught = tick(room, events, now);
     const state = caught?.state ?? (room.state as GameState | null);
-    const meta = caught?.meta ?? (room.meta as Meta);
+    const meta = caught?.meta ?? readMeta(room.meta);
     const log = caught ? [...events, ...caught.events] : events;
     const status = state?.phase === "ended" ? "ended" : (room.status as Poll["status"]);
     const profiles: Record<SeatId, Profile> = Object.fromEntries(
@@ -342,6 +207,7 @@ export async function pollRoom(deps: RoomDeps, code: string, token: string | nul
         view,
         events: visible,
         lastSeq: log.length ? log[log.length - 1].seq : -1,
+        typing: meta.talks.filter((t) => t.kind === "chat" && t.seat && t.claimedAt !== null && now - t.claimedAt < 20_000).map((t) => t.seat!),
       },
     };
   });

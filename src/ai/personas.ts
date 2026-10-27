@@ -40,6 +40,10 @@ const QUIRKS = [
   "uses way too many 👀",
   "quotes things people said earlier",
   "always mentions how tired they are",
+  "compares everything to a TV crime show",
+  "keeps a running tally of who said what",
+  "mentions their cat at the worst moments",
+  "answers questions with 'define suspicious'",
 ];
 const TOPS = ["#3b6fd8", "#d8553b", "#2f9e6e", "#8a4fd8", "#d8a23b", "#3bb3d8", "#d83b8a", "#6b7d8f", "#c9c2b3", "#1f2a3d"];
 const SKINS = ["#f1c9a5", "#e0ac84", "#c68a5e", "#a26c45", "#7a4e31", "#5a3825"];
@@ -50,6 +54,8 @@ export function personasFor(seed: string, count: number, taken: string[] = []): 
   const rng = createRng(`${seed}/personas`);
   const names = rng.shuffle(FIRST.filter((n) => !taken.some((t) => t.trim().toLowerCase() === n.toLowerCase())));
   const flats = rng.shuffle(["1A", "1B", "1C", "2A", "2B", "2C", "3A", "3B", "3C", "4A", "4B", "4C", "5A", "5B", "5C"]);
+  // Everyone gets their own quirk, so no two neighbours sound alike.
+  const quirks = rng.shuffle(QUIRKS);
   return Array.from({ length: count }, (_, i) => ({
     name: names[i % names.length] + (i >= names.length ? ` ${Math.floor(i / names.length) + 1}` : ""),
     age: rng.int(19, 71),
@@ -57,7 +63,7 @@ export function personasFor(seed: string, count: number, taken: string[] = []): 
     job: rng.pick(JOBS),
     style: textStyles[(i + rng.int(0, 3)) % textStyles.length],
     trait: traits[(i + rng.int(0, 5)) % traits.length],
-    quirk: rng.pick(QUIRKS),
+    quirk: quirks[i % quirks.length],
     look: { top: rng.pick(TOPS), skin: rng.pick(SKINS), hair: rng.pick(HAIRS), hat: rng.chance(0.3) },
   }));
 }

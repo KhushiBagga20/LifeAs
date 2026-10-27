@@ -42,4 +42,15 @@ test("a room goes from lobby to a running game over the API", async ({ request }
   expect(outside.events.every((e: { visibility: { to: string } }) => e.visibility.to === "all")).toBe(true);
 
   expect((await request.get("/api/rooms/QQQQ")).status()).toBe(404);
+
+  // After a response, the server lets the narrator speak: the opening line arrives by polling.
+  await expect
+    .poll(
+      async () => {
+        const next = await (await request.get(`/api/rooms/${host.code}`, { headers: { "x-seat-token": host.token } })).json();
+        return next.events.find((e: { kind: string }) => e.kind === "narration")?.text ?? null;
+      },
+      { timeout: 15_000, intervals: [500] },
+    )
+    .toMatch(/Block C/);
 });

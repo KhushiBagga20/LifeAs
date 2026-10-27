@@ -21,8 +21,8 @@ Status: v0.1, 2026-10-27. Branch `mafia`. "Block C" is a working title.
 | **Medic** | Block | protects one person (not the same person two nights running) | as the block |
 | **Influencer** *(optional)* | Alone | — | gets **voted out** by the block ("any publicity…"). The game carries on. |
 
-**Line-ups** (5–12 players): crew = 1 for 5–6 players, 2 for 7–9, 3 for 10–12; with Boss on,
-one crew member is the Boss. Always one Undercover and one Medic. Influencer only from 7 players.
+**Line-ups** (5–12 players): crew = 1 for 5–7 players, 2 for 8–9, 3 for 10–12; with Boss on
+and at least two crew, one crew member is the Boss (a lone Boss could never be found). Always one Undercover and one Medic. Influencer only from 7 players.
 Everyone else is a Neighbour.
 
 ### 1.2 A round

@@ -63,10 +63,15 @@ describe("line-ups", () => {
     const roles = lineup(settings(n, { boss: true, influencer: true }));
     expect(roles).toHaveLength(n);
     expect(roles.filter((r) => r === "crew" || r === "boss")).toHaveLength(crewCount(n));
-    expect(roles.filter((r) => r === "boss")).toHaveLength(1);
+    expect(roles.filter((r) => r === "boss")).toHaveLength(crewCount(n) >= 2 ? 1 : 0);
     expect(roles.filter((r) => r === "undercover")).toHaveLength(1);
     expect(roles.filter((r) => r === "medic")).toHaveLength(1);
     expect(roles.filter((r) => r === "influencer")).toHaveLength(n >= 7 ? 1 : 0);
+  });
+
+  it("never makes a lone crew member the Boss, who could never be found", () => {
+    for (const n of [5, 6]) expect(lineup(settings(n, { boss: true }))).toEqual(expect.arrayContaining(["crew"]));
+    for (const n of [5, 6]) expect(lineup(settings(n, { boss: true }))).not.toContain("boss");
   });
 
   it("uses plain crew without the Boss and refuses impossible tables", () => {

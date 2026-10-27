@@ -9,7 +9,7 @@ export const MIN_SEATS = 5;
 export const MAX_SEATS = 12;
 
 export function crewCount(seats: number): number {
-  return seats <= 6 ? 1 : seats <= 9 ? 2 : 3;
+  return seats <= 7 ? 1 : seats <= 9 ? 2 : 3;
 }
 
 export function lineup(settings: Settings): RoleId[] {
@@ -17,7 +17,8 @@ export function lineup(settings: Settings): RoleId[] {
   if (!Number.isInteger(n) || n < MIN_SEATS || n > MAX_SEATS) throw new Error(`Block C needs ${MIN_SEATS}–${MAX_SEATS} seats, not ${n}`);
   const crew = crewCount(n);
   const roles: RoleId[] = [];
-  for (let i = 0; i < crew; i++) roles.push(settings.boss && i === 0 ? "boss" : "crew");
+  // The Boss needs a partner: a lone Boss would look clear to every check and couldn't be found.
+  for (let i = 0; i < crew; i++) roles.push(settings.boss && crew >= 2 && i === 0 ? "boss" : "crew");
   roles.push("undercover", "medic");
   if (settings.influencer && n >= 7) roles.push("influencer");
   while (roles.length < n) roles.push("neighbour");
