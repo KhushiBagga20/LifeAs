@@ -1,3 +1,12 @@
+> **Direction reset · 2026-10-23:** The core product is an embodied 3D profession simulator.
+> Players control a character, navigate a workplace, manipulate work artifacts and interact
+> with independently acting character agents. The questionnaire pilot and planned 2D world
+> are superseded. `/play` is the first spatial prototype: Three.js studio, walk/collision/pathfinding,
+> editable poster artifacts, physical handoff, and three agent identities with separate memory.
+> The detailed original plan below is historical context; its screen flow and milestones are
+> not the current implementation plan. Next: richer physical tool interaction, agent-to-agent
+> task coordination, live-model evaluation, persistent world state, and a second profession.
+
 # LifeAs — Design
 
 > **Live a week in a job before you choose it.** Pick any career and play a sped-up work week

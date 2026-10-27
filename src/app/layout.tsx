@@ -22,11 +22,11 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "LifeAs — live a week in a job before you choose it",
+    default: "LifeAs — step into the job",
     template: "%s · LifeAs",
   },
   description:
-    "A career simulator. Play a sped-up work week in any job, with AI coworkers who remember what you did, then see what the job is really made of.",
+    "A playable profession simulator. Explore a 3D workplace, use its tools, and work alongside characters with their own goals.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

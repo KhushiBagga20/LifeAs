@@ -1,27 +1,17 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import Home from "@/app/page";
-
-// Server-only pieces are covered by the e2e tests.
-vi.mock("@/components/featured-careers", () => ({ FeaturedCareers: () => null }));
-vi.mock("next/form", () => ({ default: (props: React.ComponentProps<"form">) => <form {...props} /> }));
-import { kindsOfWork } from "@/lib/kinds";
 
 describe("Home", () => {
   afterEach(cleanup);
-
-  it("states what the product does", () => {
+  it("introduces the embodied profession simulator", () => {
     render(<Home />);
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Live a week in a job before you choose it." }),
-    ).toBeDefined();
+    expect(screen.getByRole("heading", { level: 1, name: /Step into it/ })).toBeDefined();
+    expect(screen.getByRole("link", { name: "Enter the studio" }).getAttribute("href")).toBe("/play");
   });
-
-  it("lists all six kinds of work", () => {
+  it("explains local versus AI character behaviour", () => {
     render(<Home />);
-    for (const kind of kindsOfWork) {
-      expect(screen.getByText(kind.name)).toBeDefined();
-    }
+    expect(screen.getByText(/Connect an AI provider/)).toBeDefined();
   });
 });

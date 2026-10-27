@@ -33,7 +33,7 @@ export default async function AboutPage() {
           </p>
           <p>
             LifeAs uses {meta.occupations} occupations that have task and interest data. We trim the
-            data and turn the interest ratings into shares (“what this job is made of”). We take the
+            data and turn the interest ratings into relative interest shares (not percentages of working time). We take the
             most common answer for each working condition, and we write our own plain labels for
             the conditions and preparation levels.
           </p>

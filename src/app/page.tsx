@@ -1,81 +1,16 @@
-import { FeaturedCareers } from "@/components/featured-careers";
-import { SearchForm } from "@/components/search-form";
-import { kindsOfWork } from "@/lib/kinds";
-
-const steps = [
-  {
-    title: "Pick a career",
-    body: "Anything from ER nurse to UX designer. Each week is built from real job data, boring parts included.",
-  },
-  {
-    title: "Live the week",
-    body: "Meetings, small real tasks, the routine and the pressure. Your choices change how people treat you.",
-  },
-  {
-    title: "See what fit",
-    body: "Your energy in each moment, set against what the job is actually made of. No single score: you decide.",
-  },
-];
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 
 export default function Home() {
-  return (
-    <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-      <section className="py-16 sm:py-24">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-ink-soft">
-          Career simulator
-        </p>
-        <h1 className="mt-4 max-w-3xl font-serif text-5xl leading-[1.05] tracking-tight text-balance sm:text-7xl">
-          Live a week in a job before you choose it.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft text-pretty">
-          Pick any career and play through a sped-up work week, with a boss, coworkers and
-          clients who remember what you did. At the end, see what the job is really made
-          of, and how it suited you.
-        </p>
-        <div className="mt-10">
-          <SearchForm />
-        </div>
-      </section>
-
-      <section aria-labelledby="featured" className="border-t border-line py-12">
-        <h2 id="featured" className="font-mono text-xs uppercase tracking-[0.18em] text-ink-soft">
-          Start with one of these
-        </h2>
-        <FeaturedCareers />
-      </section>
-
-      <section aria-labelledby="how" className="border-t border-line py-12">
-        <h2 id="how" className="font-mono text-xs uppercase tracking-[0.18em] text-ink-soft">
-          How it works
-        </h2>
-        <ol className="mt-6 grid gap-8 sm:grid-cols-3">
-          {steps.map((step, i) => (
-            <li key={step.title}>
-              <span className="font-mono text-sm text-accent-ink">0{i + 1}</span>
-              <h3 className="mt-2 font-serif text-2xl tracking-tight">{step.title}</h3>
-              <p className="mt-2 leading-relaxed text-ink-soft">{step.body}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section aria-labelledby="kinds" className="border-t border-line py-12">
-        <h2 id="kinds" className="max-w-2xl font-serif text-3xl tracking-tight text-balance">
-          Every job is a mix of six kinds of work.
-        </h2>
-        <p className="mt-3 max-w-2xl leading-relaxed text-ink-soft">
-          Your report shows which ones gave you energy, next to how much of each the job
-          really needs.
-        </p>
-        <dl className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
-          {kindsOfWork.map((kind) => (
-            <div key={kind.code} className="border-t border-line-strong pt-3">
-              <dt className="font-medium">{kind.name}</dt>
-              <dd className="mt-1 text-sm leading-relaxed text-ink-soft">{kind.body}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-    </div>
-  );
+  return <div className="mx-auto max-w-5xl px-6 py-16 sm:py-24">
+    <p className="font-mono text-xs uppercase tracking-[0.2em] text-ink-soft">LifeAs · a world you work in</p>
+    <h1 className="mt-6 max-w-3xl font-serif text-5xl leading-[1.05] tracking-tight sm:text-7xl">Don’t just read<br />about the job.<br /><em className="text-accent-ink">Step into it.</em></h1>
+    <p className="mt-8 max-w-xl text-lg leading-relaxed text-ink-soft">Be the character. Walk into the workplace. Use the tools, make something, and work alongside people with their own jobs to do.</p>
+    <section className="mt-12 grid gap-8 rounded-xl border border-line-strong bg-paper-2 p-6 sm:grid-cols-[1fr_auto] sm:p-10" aria-labelledby="world-one">
+      <div><p className="font-mono text-xs uppercase tracking-[0.15em] text-ink-soft">World 01 / playable prototype</p><h2 id="world-one" className="mt-3 font-serif text-3xl">Fieldwork Studio</h2><p className="mt-3 max-w-lg leading-relaxed text-ink-soft">Your first day as a graphic designer. A client brief, an empty page, a print deadline. Build the poster yourself and carry it from your desk to the client.</p><p className="mt-4 text-sm text-ink-soft">3D workplace · keyboard or click to move · three characters</p></div>
+      <Link href="/play" className="flex h-fit items-center justify-center gap-4 self-end rounded-lg bg-accent px-6 py-4 font-medium text-on-accent">Enter the studio <ArrowUpRight size={18} /></Link>
+    </section>
+    <p className="mt-6 max-w-2xl text-sm leading-relaxed text-ink-soft">The studio works without a key using local character behaviours. Connect an AI provider to give each coworker independent decisions, conversation and memory. This first world is a prototype of the larger profession simulator.</p>
+    <Link href="/careers" className="mt-10 inline-block text-sm text-ink-soft underline underline-offset-4">Browse the occupational data behind LifeAs →</Link>
+  </div>;
 }

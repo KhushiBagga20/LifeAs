@@ -79,7 +79,7 @@ export function KindsChart({ kinds }: { kinds: CareerProfile["kinds"] }) {
           <thead className="text-ink-soft">
             <tr className="border-b border-line">
               <th className="py-2 font-medium">Kind of work</th>
-              <th className="py-2 text-right font-medium">Share</th>
+              <th className="py-2 text-right font-medium">Interest share</th>
               <th className="py-2 text-right font-medium">O*NET score (1–7)</th>
             </tr>
           </thead>

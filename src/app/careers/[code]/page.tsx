@@ -55,12 +55,13 @@ async function Career({ params }: Pick<PageProps<"/careers/[code]">, "params">) 
           <p className="mt-3 text-ink-soft">Also called {profile.commonTitles.slice(0, 4).map(shortTitle).join(", ")}</p>
         )}
         <p className="mt-6 text-lg leading-relaxed">{profile.description}</p>
+      {code === "27-1024.00" && <div className="mt-6"><Link href="/play" className="inline-block rounded-lg bg-accent px-5 py-3 font-medium text-on-accent">Enter the 3D design studio →</Link><p className="mt-2 text-sm text-ink-soft">Playable 3D prototype · walk, design, review and print</p></div>}
       </header>
 
-      <Section title="What this job is made of">
+      <Section title="Interest emphasis in this career">
         <p className="mb-6 max-w-2xl leading-relaxed text-ink-soft">
-          How strongly each kind of work features in this job, from O*NET® interest ratings.
-          This is the mix your week will follow.
+          Relative emphasis across six O*NET® interest areas, calculated by normalising the
+          ratings above their minimum. These percentages do not measure working time.
         </p>
         <KindsChart kinds={profile.kinds} />
       </Section>

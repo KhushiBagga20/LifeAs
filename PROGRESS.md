@@ -1,3 +1,32 @@
+## Direction reset · 2026-10-23
+
+The user clarified the core: multiple AI agents in a **playable 3D workplace**, with a controlled
+character and physical work. The questionnaire implementation was removed. `/play` now hosts
+Fieldwork Studio; `/try/graphic-designer` redirects there. The homepage leads into the world.
+
+Implemented: Three.js cutaway studio with procedural furniture, lighting, animated characters,
+click/WASD navigation, collision and A* routing; station interactions; editable poster layout
+(drag/type size/position/palette); carrying the draft, pinning it on the wall, printing and picking
+up a proof, and delivering it. The same artwork is textured onto the world objects. Local
+characters keep moving while the player uses tools.
+
+Agent API: per-character goals and private bounded memories; shared recent observations;
+model-chosen destinations/dialogue through existing provider; explicit local behaviour without
+keys; in-process expiring sessions, request serialization, rate limit and 24 generation requests
+per session. No provider key is configured, so real model behaviour is not validated. Process-local
+sessions and existing AI billing concurrency remain launch limitations.
+
+Validation: full brief → workstation → review → print → pickup → delivery played manually in the
+in-app browser, including changing the artifact’s booking type size. `npm run check` passes
+(173 tests, lint/typecheck). New tests cover all station-to-station paths, furniture bounds,
+actual layout feedback, separate agent memories, invalid observations, origin/session/rate
+checks and provider fallback. Production Playwright remains blocked by Turbopack’s denied
+local-port binding. No claims of production browser-suite success or live AI quality.
+
+The previous roadmap and entries below are historical.
+
+---
+
 # LifeAs — progress
 
 Plan: about 4 weeks of focused work (22 working days). Started: 2026-10-19
@@ -234,3 +263,88 @@ status as engine-owned state.
 - With Azure configured, both tiers use the one deployment (`gpt-6-astra`), including the many
   fast-tier character calls in M4. Check its prices before running weeks; add a separate fast
   deployment if it's expensive.
+
+## Authored playable pilot (2026-10-23)
+
+A separate product prototype is now available at `/try/graphic-designer`, linked from the
+homepage and graphic designer profile. It does not complete M4's general-purpose AI moment
+engine. The five authored moments cover an audience brief, a layout task with a saved
+explanation, client scope pressure, print-file preparation and a proof review. Choices change
+bounded story meters; one later scene recalls the opening decision. Each moment references a
+real task in the committed graphic designer O*NET profile.
+
+The report shows the player's energy ratings with sample counts, their decisions and
+consequences, source task text, and a private reflection. Progress is validated on restore and
+saved in browser local storage, including unresolved feedback and finished reports. A confirmed
+delete resets it. Storage failures have an explicit fallback message. No API key or paid calls
+are needed. Scenario feedback reviews the selected layout, not the free-text explanation.
+
+Career chart copy now describes normalised interest emphasis rather than working-time shares.
+The README explains the pilot's scope and persistence.
+
+Verification: `npm run check` passes (lint, typecheck, 170 tests). New tests cover source task
+references, save validation, energy calculations, full UI completion, report persistence,
+unresolved-feedback resume and deletion. A Playwright flow covers completion/reload/deletion
+at laptop and phone sizes, but could not execute here: the production build's Turbopack CSS
+worker is denied permission to bind a local port even after an escalated retry. Visual QA and
+production build verification remain outstanding. AI cost-accounting fixes from the review
+are still outstanding; this authored pilot does not call that layer.
+
+## Character story scenes · 2026-10-23
+
+Replaced the character chat popup with a full-screen story composition. The camera blends
+from the cutaway view to the actual speaker, with the studio behind them; the speaker faces
+the camera and holds their position. The rest of the workplace continues. Dialogue sits below
+the actor with a character nameplate, progressively revealed text, a reveal/skip control,
+topic replies, and free text. Eyes blink; speech reveal drives mouth movement and hand/head
+gestures. Escape/Back to studio restores the world camera and walking focus. Reduced-motion
+preferences skip the camera blend, text reveal, blinking and speech gestures.
+
+Local replies now acknowledge the suggested topic rather than inserting a technical provider
+message into the character's line. Local/AI mode remains explicitly labelled outside dialogue.
+Verified Maya and Sam scenes and suggested replies in the running browser. `npm run check`
+passes with 178 tests, including text skipping, reduced motion, input submission, local topics,
+and camera framing. A browser regression test covers the conversation-to-world transition;
+production Playwright remains subject to the previously recorded environment restriction.
+
+## Workplace tension and consequences · 2026-10-23
+
+Added a deterministic story director in `src/world/story.ts` around physical work. The clock
+starts at 09:00 with a 10:00 volunteer departure. Work actions have visible time costs; reading,
+conversation and walking do not silently consume time. At the first review, Sam's call reveals
+that the library foyer is closed. The player can confirm East Hall (12 minutes), move exact room
+information online (5), or keep the obsolete approved venue (1). The confirmed brief does not
+silently edit a draft: the player must return to the workstation, save the changed poster and
+review it again. Sam can negotiate one 15-minute extension, costing two minutes for the call.
+
+The first production attempt encounters a paper jam. Inspection and clearing cost time; the
+printer's amber indicator and hinged service panel reflect its state. Printing closes the panel.
+Separate draft and proof textures preserve printed artwork, and a picked-up proof leaves the
+tray. A later design/brief change does not magically alter a physical proof.
+
+Handoffs now differ: an accurate on-time proof, a corrected proof after the volunteer has left,
+or rejection of an obsolete venue / unresolved layout issue. Rejected work has a correction
+path. Character moods, eyebrows, gestures, stage directions and spoken responses track these
+states. Narration is separate from spoken dialogue. Model observations now include the work
+clock, deadline, confirmed/draft/printed venue and production state; model instructions prohibit
+inventing resolutions to these events.
+
+Verification: manually played the complete confirmed-room route, negotiated the extension,
+returned to the workstation and reviewed again, cleared the jam, printed and delivered at
+10:08 against 10:15. Previous 09:55 route was replaced by this fuller edit loop. Unit tests cover
+both viable venue responses, stale/incorrect proofs, late versus extended deadlines, unresolved
+layout issues, printer service idempotence, and the need to actually save an updated draft.
+`npm run check`: lint/typecheck and 185 tests pass. The production-browser-suite restriction
+recorded above remains; live-model story quality is still untested without a provider key.
+
+Final story pass: confirmed-venue changes now require a return to the workstation and a new
+saved/reviewed draft. With one negotiated extension, the full corrected route reaches the
+client at 10:08 versus a 10:15 departure; verified manually in-browser. Proof acceptance also
+checks the layout issues captured at print time, rather than claiming every design is legible.
+Draft/proof materials are separate, so changing a design cannot alter the sheet already printed.
+
+Long character dialogue now advances in short beats, with replies after the final beat, keeping
+the portrait and gestures visible on narrow screens. Scene state is restored when development
+hot reload recreates the renderer mid-conversation. Verified the crisis beat and its choices on
+the running page. Latest `npm run check`: 186 tests pass with lint/typecheck clean. The new
+pagination, actual-edit requirement, wrong-venue proof and deadline branches have unit coverage.

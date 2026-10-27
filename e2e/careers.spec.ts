@@ -7,9 +7,9 @@ async function expectNoSidewaysScroll(page: Page) {
   expect(overflow).toBe(0);
 }
 
-test("search from the home page and open a career", async ({ page }, testInfo) => {
-  await page.goto("/");
-  await page.getByLabel("What job do you want to try?").fill("nurse");
+test("search from the career explorer and open a career", async ({ page }, testInfo) => {
+  await page.goto("/careers");
+  await page.getByLabel("Search about 900 careers").fill("nurse");
   await page.getByRole("button", { name: "Search" }).click();
 
   await expect(page).toHaveURL(/\/careers\?q=nurse/);
@@ -20,7 +20,7 @@ test("search from the home page and open a career", async ({ page }, testInfo) =
 
   await results.getByRole("link").first().click();
   await expect(page.getByRole("heading", { level: 1, name: "Registered Nurses" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "What this job is made of" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Interest emphasis in this career" })).toBeVisible();
   for (const kind of ["Hands-on", "Thinking", "Creating", "Helping", "Leading", "Organising"]) {
     await expect(page.getByLabel(new RegExp(`^${kind}: \\d+%`))).toBeVisible();
   }
@@ -31,7 +31,7 @@ test("search from the home page and open a career", async ({ page }, testInfo) =
 });
 
 test("featured careers link to their pages", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/careers");
   await page.getByRole("link", { name: /Electrician/ }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Electricians" })).toBeVisible();
   await expect(page.getByRole("article").getByText("Mostly Hands-on")).toBeVisible();
