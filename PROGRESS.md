@@ -10,7 +10,7 @@ Rule: each milestone ends with tests passing, then a commit and a push of `mafia
 | G1 | ✅ **Engine:** roles and line-ups, phases, night resolution, votes, wins, Influencer, Boss, per-seat views, event log | rule tests pass; 2,000 random games keep every invariant |
 | G2 | ✅ **Rooms:** create/join/start/act, seat tokens, tick-on-read timers, polling, Postgres | service tests play full games with human and AI seats |
 | G3 | ✅ **AI neighbours + narrator:** personas, suspicion model, AI night actions and votes, model chat and narration with fakes, leak tests, per-room cost cap | a 1-human game finishes with FakeLLM; real chat works on Azure |
-| G4 | **3D courtyard:** Block C scene, people, day/night, bubbles, spotlight, votes, ghosts | smooth on laptop and phone; reduced motion works |
+| G4 | ✅ **3D courtyard:** Block C scene, people, day/night, bubbles, spotlight, votes, ghosts | smooth on laptop and phone; reduced motion works |
 | G5 | **Screens:** landing, lobby, role reveal, night actions, dawn, day chat/point/vote, case file | a whole game is playable and fun on phone and laptop |
 | G6 | **Polish + e2e:** two-browser multiplayer test, accessibility, error and reconnect states | e2e green; a stranger can host and play with a friend |
 
@@ -61,6 +61,17 @@ Status key: 🟡 in progress · ✅ done
   narration about $0.01 (6–7 s), so a game costs roughly $0.40–0.60. The per-room cap
   (`LLM_RUN_CAP_USD`, run id `room:CODE`) and the daily cap still apply; e2e forces
   `LLM_PROVIDER=fake`. `npm run talk:smoke` plays a minute of a real room. · 2026-10-27
+- **Courtyard in G4:** framework-free three.js (`src/world/courtyard.ts`) with a small API
+  (`update`, `say`, `pause`, `dispose`), loaded only when a page shows it; the HTML screens keep
+  every control, and clicking someone in the scene is a shortcut. The scene gets only what a
+  seat's view already holds (`sceneFromView`). Orthographic camera framed on the ring (the
+  viewer stands nearest the camera); one instanced mesh for the building's windows; pixel ratio
+  capped (1.5 on phones); rendering stops when the canvas is off screen; reduced motion keeps
+  the camera, people and lighting still. · 2026-10-28
+- **A live demo on the landing page:** the talk runner's pick and apply steps became pure
+  (`src/rooms/voices.ts`, `src/rooms/meta.ts`), so eight AI neighbours play a real game in the
+  browser with the template voices, at 1.6× speed, starting over after each game. It can be
+  paused, and falls back to the flat building picture without WebGL. · 2026-10-28
 
 ## Log
 _(date · what · tests · cost)_
@@ -79,3 +90,7 @@ _(date · what · tests · cost)_
   fixes (Boss needs a partner, one crew up to 7 seats, two new tells) · 115 unit (leak tests,
   fallbacks, once-only posting, balance over 40 games) + 8 e2e passing · real Azure smoke: 2
   narrations + 12 chat lines, all from the model · $0.17
+- 2026-10-28 · G4: 3D courtyard (Block C building with lit windows, lamp post, people in a
+  ring, name tags, speech bubbles, pointing and vote arcs, spotlight, ghosts, phase lighting)
+  and a live all-AI game on the landing page · 131 unit + 14 e2e passing (WebGL draws at both
+  sizes, pause, reduced motion) · about 80 fps on the laptop · $0

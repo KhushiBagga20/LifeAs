@@ -5,7 +5,8 @@ import { isCrew } from "@/game/roles";
 import { RuleError, type GameEvent, type GameState, type Intent, type Phase, type SeatId } from "@/game/types";
 import { viewFor } from "@/game/view";
 import { createRng } from "@/lib/rng";
-import { readMeta, seatNumber, type Meta, type Plan, type RoomRow, type TalkJob } from "./room";
+import { readMeta, seatNumber, type Meta, type Plan, type TalkJob } from "./meta";
+import type { RoomRow } from "./room";
 
 // Game time for a room (DESIGN.md §3): "tick on read" catch-up, the AI's planned moves, and the
 // talk scheduler that decides when AI neighbours and the narrator should speak. All pure: the

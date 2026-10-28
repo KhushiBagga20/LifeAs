@@ -1,3 +1,4 @@
+import { LiveDemo } from "@/components/LiveDemo";
 import { roleIds, roles, type Team } from "@/game/roles";
 
 const steps = [
@@ -13,43 +14,6 @@ const teamStyle: Record<Team, { label: string; className: string }> = {
   solo: { label: "Solo", className: "text-amber border-amber" },
 };
 
-// Four floors of flats above the street door: which windows are lit (amber), dark, or the one
-// crew-red window. Fixed so the page is stable.
-const windows = [
-  "1010110101",
-  "0110101101",
-  "1101011010",
-  "0101101011",
-].map((row, r) => [...row].map((c, i) => (c === "1" ? (r === 2 && i === 6 ? "crew" : "lit") : "dark")));
-
-function Building() {
-  return (
-    <svg viewBox="0 0 320 210" className="h-auto w-full max-w-md" aria-hidden>
-      <rect x="10" y="20" width="300" height="190" rx="4" className="fill-surface-2" />
-      <rect x="10" y="12" width="300" height="10" rx="2" className="fill-surface" />
-      {windows.map((row, r) =>
-        row.map((state, c) => (
-          <rect
-            key={`${r}-${c}`}
-            x={22 + c * 29}
-            y={32 + r * 34}
-            width="18"
-            height="22"
-            rx="2"
-            className={state === "lit" ? "fill-amber" : state === "crew" ? "fill-crew" : "fill-bg"}
-            opacity={state === "dark" ? 0.9 : state === "lit" ? 0.85 : 1}
-          />
-        )),
-      )}
-      <rect x="10" y="168" width="300" height="2" className="fill-surface" />
-      <rect x="140" y="182" width="40" height="28" rx="2" className="fill-bg" />
-      <text x="160" y="179" textAnchor="middle" className="fill-soft font-mono" fontSize="8" letterSpacing="2">
-        BLOCK C
-      </text>
-    </svg>
-  );
-}
-
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 sm:px-6">
@@ -60,7 +24,7 @@ export default function Home() {
         <span className="font-mono text-xs uppercase tracking-[0.2em] text-soft">5–12 players · online</span>
       </header>
 
-      <section className="grid items-center gap-10 py-12 sm:py-20 md:grid-cols-[1.2fr_1fr]">
+      <section className="grid items-center gap-10 py-10 sm:py-16 lg:grid-cols-[1fr_1.15fr]">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-amber">A game of lies, neighbours and night shifts</p>
           <h1 className="mt-4 font-display text-5xl font-bold leading-[1.02] tracking-tight text-balance sm:text-7xl">
@@ -72,9 +36,7 @@ export default function Home() {
             every night.
           </p>
         </div>
-        <div className="flex justify-center md:justify-end">
-          <Building />
-        </div>
+        <LiveDemo />
       </section>
 
       <section aria-labelledby="round" className="border-t border-line py-12">
